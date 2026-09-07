@@ -7,7 +7,7 @@ work/
 
 .codex/
 .agents/
-.de-slop-ui/
+
 .env*
 *.log
 

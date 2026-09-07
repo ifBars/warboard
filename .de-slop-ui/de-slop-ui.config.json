@@ -1,0 +1,6 @@
+{
+  "preset": "advisory",
+  "productMode": "creative-editor",
+  "generatedBy": "de-slop-ui/de-slop-lint",
+  "note": "Optional local ESLint guardrails for repeatable AI UI output smells. Edit freely for this repo."
+}
