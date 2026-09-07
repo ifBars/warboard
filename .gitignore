@@ -1,0 +1,13 @@
+node_modules/
+dist/
+output/
+.playwright-cli/
+work/
+*.tsbuildinfo
+
+.codex/
+.agents/
+.de-slop-ui/
+.env*
+*.log
+

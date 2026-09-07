@@ -1,0 +1,23 @@
+{
+  "source": "Community images shared by u/blahajSupremacy",
+  "post": "https://www.reddit.com/r/WarDogs/comments/1w41e33/hires_images_of_all_3_current_maps_perfect_for/",
+  "status": "Local evaluation; artwork redistribution rights unverified",
+  "sources": [
+    {
+      "id": "bakurani",
+      "width": 16384,
+      "height": 16384,
+      "sha256": "4ecbdf3fff3a34e42fac72fce01a5bafb7244d41d3769bf279fe6020423079c3",
+      "bytes": 426271457,
+      "url": "https://drive.google.com/file/d/1KIGUrOfjvHKEgXMM2rtlym5NxN_TlnT5/view"
+    },
+    {
+      "id": "ozeti",
+      "width": 32768,
+      "height": 32768,
+      "sha256": "7dd0fe477b07b08eff9d3fddec383937a655768f28d7bfb746b81d3527a96cf1",
+      "bytes": 1579109489,
+      "url": "https://drive.google.com/file/d/1cO8HsbjyarjEtKpRrKfUz1mbOizHKvEC/view"
+    }
+  ]
+}
