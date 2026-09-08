@@ -35,7 +35,7 @@ self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const key of awai
 self.addEventListener('fetch',e=>{
  const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin)return;
  if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.open(CORE).then(c=>c.match(BASE+'index.html'))));return;}
- if(!['/assets/','/maps/','/terrain/','/icon-'].some(p=>u.pathname.startsWith(BASE+p.slice(1)))&&!['/favicon.svg','/brand-mark.svg','/manifest.webmanifest'].includes('/'+u.pathname.slice(BASE.length)))return;
+ if(!['/assets/','/maps/','/terrain/','/obstacles/','/icon-'].some(p=>u.pathname.startsWith(BASE+p.slice(1)))&&!['/favicon.svg','/brand-mark.svg','/manifest.webmanifest'].includes('/'+u.pathname.slice(BASE.length)))return;
  e.respondWith((async()=>{const core=await caches.open(CORE);const fixed=await core.match(e.request,{ignoreVary:true});if(fixed)return fixed;const cache=await caches.open(RUNTIME);const saved=await cache.match(e.request,{ignoreVary:true});if(saved)return saved;const response=await fetch(e.request);if(response.ok){try{await cache.put(e.request,response.clone());const keys=await cache.keys();for(const key of keys.slice(0,Math.max(0,keys.length-96)))await cache.delete(key);}catch{}}return response;})());
 });`,
 );

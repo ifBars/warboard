@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "date": "2026-09-08",
+  "maps": {
+    "bakurani": {
+      "size": 2048,
+      "span": 163.2,
+      "scale": 0.017009756618600748,
+      "offset": -1008.2656,
+      "surfaceHash": "ce045555f1228a9dce18088179efee5ab3103151b59cbc4c9009448a5dc9b81d",
+      "canopyHash": "12e237b958819d5b34275adc8d1685fecbb3cf578b87e27ba4534e6231f70971",
+      "instances": 846794,
+      "unresolvedInstances": 0,
+      "source": "https://clutchbase.app/wardogs/3d/bakurani/",
+      "surfaceSource": "https://clutchbase.app/data/wardogs/dem/bakurani.280ee3f7.bin",
+      "roadHash": "515c754489dd012a926d92298e0847a60c79437946ed1751e0ed7dbd7f222e9e",
+      "roadSpan": 163.84,
+      "roadSource": "https://wardogs.zone/game/maps/roads/kavkazi.webp?v=8c19e43f"
+    },
+    "ozeti": {
+      "size": 2048,
+      "span": 163.2,
+      "scale": 0.017913138017853058,
+      "offset": -1122.57625,
+      "surfaceHash": "235ce5adb7975cc2916db198a8596157bff626f303341b0f9295a67a5842bc53",
+      "canopyHash": "83db6b4e452bf83ce99db3d9daa80ba2ed66447fc9c778d9a245b004d55bdca3",
+      "instances": 822557,
+      "unresolvedInstances": 0,
+      "source": "https://clutchbase.app/wardogs/3d/ozeti/",
+      "surfaceSource": "https://clutchbase.app/data/wardogs/dem/ozeti.4108dad2.bin",
+      "roadHash": "953a33a8b7803aba734c0efe6608338131706c24f729b12d407cd20997507dad",
+      "roadSpan": 163.84,
+      "roadSource": "https://wardogs.zone/game/maps/roads/europe.webp?v=47590fef"
+    }
+  }
+}

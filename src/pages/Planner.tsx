@@ -142,6 +142,7 @@ type Gesture =
   | { kind: "pan"; start: Point; camera: Camera };
 
 const BoardTerrain = lazy(() => import("../components/BoardTerrain"));
+const BaseBuilder = lazy(() => import("./BaseBuilder"));
 const FlightPlanner = lazy(() => import("./FlightPlanner"));
 export default function App({
   initial,
@@ -186,7 +187,7 @@ export default function App({
   const section =
     page === "fire" || (page === "board" && fireOpen)
       ? "fire"
-      : page === "home" || page === "flight"
+      : page === "home" || page === "flight" || page === "base"
         ? "board"
         : page;
   const [library, setLibrary] = useState<SavedPlan[] | null>(null);
@@ -888,6 +889,27 @@ export default function App({
       {page === "home" && (
         <Home plan={plan} onNavigate={visit} onPlans={() => void showPlans()} />
       )}
+      {page === "base" && (
+        <Suspense
+          fallback={
+            <TerrainLoading
+              mapName={plan.map.name}
+              title="Opening Base builder"
+              backToBoard
+            />
+          }
+        >
+          <BaseBuilder
+            plan={plan}
+            onChange={commit}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={history.length > 0}
+            canRedo={future.length > 0}
+            onBoard={() => visit("board")}
+          />
+        </Suspense>
+      )}
       {page === "flight" && (
         <Suspense
           fallback={
@@ -917,7 +939,7 @@ export default function App({
         </Suspense>
       )}
       <div
-        hidden={page === "home" || page === "flight"}
+        hidden={page === "home" || page === "flight" || page === "base"}
         className={`app ${panel ? "" : "panel-hidden"} section-${section}`}
         onKeyDown={keys}
         onPointerDownCapture={(e) => {

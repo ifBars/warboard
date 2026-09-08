@@ -5,6 +5,7 @@ import {
   choosePattern,
   fitFlightAltitudes,
   flankGate,
+  flightCoverForRouting,
   searchCorridor,
   corridorCost,
   type AutoFlightRequest,
@@ -318,4 +319,87 @@ test("compact braking distance is independent of tower clearance and retains the
       towerSegmentClear(corridor[Math.max(0, i - 1)], p, r.towers, 35),
     ),
   ).toBe(true);
+});
+
+test("composite structures and placed canopy affect route costs and fitted clearance", () => {
+  const r = request();
+  const size = 100;
+  r.obstacles = {
+    size,
+    span: 20,
+    scale: 1,
+    offset: 0,
+    surface: new Uint16Array(size * size).fill(100),
+    canopy: new Float32Array(size * size).fill(NaN),
+  };
+  for (let y = 0; y < size; y++)
+    for (let x = 48; x < 53; x++) r.obstacles.canopy[y * size + x] = 165;
+  const cost = corridorCost(r);
+  expect(cost.density({ x: 10, y: 10 })).toBeGreaterThan(
+    cost.density({ x: 5, y: 10 }),
+  );
+  const f = {
+    ...emptyFlight(),
+    waypoints: [
+      { id: "a", name: "Start", x: 3, y: 10, altitude: 0 },
+      { id: "b", name: "Transit", x: 10, y: 10, altitude: 0 },
+      { id: "c", name: "LZ", x: 17, y: 10, altitude: 0 },
+    ],
+  };
+  const points = routeLocations(f.waypoints, f.approach, true);
+  const fitted = fitFlightAltitudes(
+    f,
+    r,
+    points.map(() => 100),
+  ).flight;
+  const profile = routeAltitudes(
+    fitted,
+    points.map((p) => ({ ...p, ground: 100 })),
+  );
+  expect(
+    profile
+      .filter((p) => p.x >= 9.6 && p.x < 10.6)
+      .every((p) => p.altitude >= 177 - 0.001),
+  ).toBe(true);
+  expect(fitted.waypoints.at(-1)?.altitude).toBeCloseTo(112);
+});
+
+test("positioned tree data takes priority over image classification but keeps manual hazards", () => {
+  const r = request();
+  r.flight.autoTrees = {
+    version: 1,
+    source: "wardogs-zone-color-v1",
+    map: "Bakurani",
+    size: 2048,
+    sensitivity: "balanced",
+    height: 25,
+    enabled: true,
+    runs: [],
+    cells: 0,
+    patches: 0,
+  };
+  r.flight.treeAreas = [
+    {
+      id: "manual",
+      name: "Observed trees",
+      height: 45,
+      points: [
+        { x: 3, y: 3 },
+        { x: 4, y: 3 },
+        { x: 4, y: 4 },
+      ],
+    },
+  ];
+  expect(flightCoverForRouting(r).autoTrees).toBe(r.flight.autoTrees);
+  r.obstacles = {
+    size: 2,
+    span: 20,
+    scale: 1,
+    offset: 0,
+    surface: new Uint16Array(4),
+    canopy: new Float32Array(4).fill(NaN),
+  };
+  expect(flightCoverForRouting(r).autoTrees).toBeUndefined();
+  expect(flightCoverForRouting(r).treeAreas).toBe(r.flight.treeAreas);
+  expect(r.flight.autoTrees).toBeDefined();
 });

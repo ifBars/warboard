@@ -1,5 +1,6 @@
 import {
   choosePattern,
+  flightCoverForRouting,
   corridorCost,
   fitFlightAltitudes,
   flankGate,
@@ -19,12 +20,15 @@ import {
 import { terrainHeights } from "./terrain";
 import { findFlatGround } from "./landing";
 import { colorImage, detectForest } from "./forest";
+import { loadObstacles } from "./obstacles";
 const progress = (message: string) => self.postMessage({ progress: message });
 self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
   try {
     const request = event.data,
       { options, grid } = request,
       warnings: string[] = [];
+    progress("Loading structure surfaces and placed-tree bounds…");
+    request.obstacles = await loadObstacles(request.mapName);
     if (!request.flight.autoTrees) {
       progress("Detecting tree cover and road-like gaps…");
       const map = request.mapName;
@@ -78,6 +82,7 @@ self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
         ...request.flight,
         autoTrees: { ...request.flight.autoTrees, enabled: true },
       };
+    const coverFlight = flightCoverForRouting(request);
     const requestedEnd = { ...options.end };
     if (options.nearbyLanding) {
       progress("Checking nearby landing footprints at 2 m spacing…");
@@ -89,13 +94,13 @@ self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
         7,
         1,
         (p) =>
-          coverHeight(p, request.flight, grid, 26) === 0 &&
+          coverHeight(p, coverFlight, grid, 26) === 0 &&
           towerSegmentClear(p, p, request.towers, options.towerClearance + 5) &&
           onLandingSide(p, requestedEnd, options.landingSide),
         10,
       );
       const open = candidates.filter(
-        (p) => coverHeight(p, request.flight, grid, 26) === 0,
+        (p) => coverHeight(p, coverFlight, grid, 26) === 0,
       );
       open.sort(
         (a, b) =>
@@ -108,7 +113,7 @@ self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
         );
       options.end = { x: open[0].x, y: open[0].y };
     }
-    if (coverHeight(options.end, request.flight, grid, 22) > 0)
+    if (coverHeight(options.end, coverFlight, grid, 22) > 0)
       throw Error(
         "The landing footprint overlaps estimated tree cover. Choose a clearing or enable nearby landing search.",
       );
@@ -256,7 +261,7 @@ self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
         "Generated route exceeds the portable plan limits. Try a shorter route.",
       );
     const treeSamples = samples.filter(
-      (p) => coverHeight(p, request.flight, grid, 12) > 0,
+      (p) => coverHeight(p, coverFlight, grid, 12) > 0,
     ).length;
     if (treeSamples)
       warnings.push(
@@ -267,10 +272,13 @@ self.onmessage = async (event: MessageEvent<AutoFlightRequest>) => {
         "Some climbs or descents are steep. Reduce speed and review the height profile; aircraft performance is not calibrated.",
       );
     warnings.push(
+      "Structure surfaces and placed-tree bounds are checked on an approximately 8 m grid. Thin obstacles, openings and changes during a match remain unverified.",
+    );
+    warnings.push(
       `Tower centers have a ${options.towerClearance} m exclusion radius at every altitude. This is a planning buffer, not a measured tower footprint.`,
     );
     warnings.push(
-      "Ends at a 12 m inspection hover. Buildings, wires, water and live threats are not mapped; landing and combat exposure remain unverified.",
+      "Ends at an inspection hover at least 12 m above sampled terrain and obstacles. Wires, water and live threats remain unverified.",
     );
     const result: AutoFlightResult = {
       flight: fitted.flight,

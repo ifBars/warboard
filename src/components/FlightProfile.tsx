@@ -19,11 +19,20 @@ export default function FlightProfile({
   const maxDistance = samples.at(-1)!.distance || 1;
   const low =
       Math.min(...samples.map((s) => Math.min(s.ground, s.altitude))) - 30,
-    high = Math.max(...samples.map((s) => Math.max(s.ground, s.altitude))) + 30;
+    high =
+      Math.max(
+        ...samples.map((s) =>
+          Math.max(s.ground, s.altitude, s.obstacle ?? s.ground),
+        ),
+      ) + 30;
   const x = (s: Sample) => (s.distance / maxDistance) * 1000,
     y = (height: number) => 130 - ((height - low) / (high - low)) * 115;
   const ground = samples.map((s) => `${x(s)},${y(s.ground)}`).join(" "),
     route = samples.map((s) => `${x(s)},${y(s.altitude)}`).join(" ");
+  const obstacles = samples
+    .map((s) => `${x(s)},${y(Math.max(s.ground, s.obstacle ?? s.ground))}`)
+    .join(" ");
+  const hasObstacles = samples.some((s) => s.obstacle !== undefined);
   const selected = samples[Math.min(index, samples.length - 1)];
   return (
     <section className="flight-profile" aria-label="Route elevation profile">
@@ -31,6 +40,12 @@ export default function FlightProfile({
         <strong>Route profile</strong>
         <span>
           Ground <i className="ground-key" /> Flight <i className="route-key" />{" "}
+          {hasObstacles && (
+            <>
+              {" "}
+              Obstacles <i style={{ background: "#e8bb48" }} />{" "}
+            </>
+          )}{" "}
           · absolute elevation (m)
         </span>
       </div>
@@ -59,9 +74,20 @@ export default function FlightProfile({
           stroke="#a9b4b8"
           strokeWidth="1"
         />
+        {hasObstacles && (
+          <polyline
+            points={obstacles}
+            fill="none"
+            stroke="#e8bb48"
+            strokeWidth="1.5"
+            strokeDasharray="4 2"
+          />
+        )}
         <polyline points={route} fill="none" stroke="#a6dce5" strokeWidth="2" />
         {samples
-          .filter((s) => s.altitude <= s.ground)
+          .filter(
+            (s) => s.altitude <= Math.max(s.ground, s.obstacle ?? s.ground),
+          )
           .map((s, i) => (
             <circle key={i} cx={x(s)} cy={y(s.altitude)} r="3" fill="#ed796a" />
           ))}
@@ -92,6 +118,16 @@ export default function FlightProfile({
         <strong>
           {(selected.altitude - selected.ground).toFixed(0)} m terrain clearance
         </strong>
+        {selected.obstacle !== undefined && (
+          <>
+            {" "}
+            ·{" "}
+            {(
+              selected.altitude - Math.max(selected.ground, selected.obstacle)
+            ).toFixed(0)}{" "}
+            m obstacle clearance (estimated)
+          </>
+        )}
       </p>
     </section>
   );

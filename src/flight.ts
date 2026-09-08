@@ -202,6 +202,7 @@ export function gridHeight(g: TerrainGrid, p: Point): number | null {
   return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
 }
 export type RouteSample = Point & {
+  obstacle?: number;
   distance: number;
   leg: number;
   t: number;

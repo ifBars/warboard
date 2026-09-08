@@ -1,6 +1,7 @@
 import { assessPatch, type LandingCandidate, type TerrainGrid } from "./flight";
 import type { Point } from "./model";
 import { terrainHeights } from "./terrain";
+import { loadObstacles, obstacleHeight } from "./obstacles";
 
 export async function findFlatGround(
   map: string,
@@ -42,7 +43,19 @@ export async function findFlatGround(
       ...(await terrainHeights(map, points.slice(offset, offset + 24000))),
     );
   const candidates: LandingCandidate[] = [];
+  const obstacles = await loadObstacles(map);
   sites.forEach((p, i) => {
+    const start = i * size * size;
+    if (
+      points
+        .slice(start, start + size * size)
+        .some(
+          (point, j) =>
+            (obstacleHeight(obstacles, point) ?? -Infinity) >
+            heights[start + j] + 4,
+        )
+    )
+      return;
     const metrics = assessPatch(
       heights.slice(i * size * size, (i + 1) * size * size),
       size,

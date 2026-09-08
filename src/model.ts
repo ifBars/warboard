@@ -1,4 +1,5 @@
 import type { Mission } from "./ballistics";
+import { validBase, type BasePlan } from "./base";
 import { isFlight, type Flight } from "./flight";
 import { resourceNames, type Operations } from "./operations";
 export type Point = { x: number; y: number };
@@ -28,6 +29,7 @@ export type Plan = {
   mission?: Mission;
   operations?: Operations;
   flight?: Flight;
+  base?: BasePlan;
 };
 export const colors = ["#e8bb48", "#ed796a", "#73b7da", "#f4f2e9", "#303a2c"];
 export const point = (p: unknown): p is Point =>
@@ -152,6 +154,8 @@ export function validatePlan(value: unknown): Plan {
   }
   if (p.flight !== undefined && !isFlight(p.flight))
     throw new Error("The plan contains invalid flight data.");
+  if (p.base !== undefined && !validBase(p.base))
+    throw new Error("The plan contains invalid base data.");
   if (p.flight?.autoTrees && p.flight.autoTrees.map !== p.map.name)
     throw new Error("Tree detection belongs to a different map.");
   return p;

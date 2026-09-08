@@ -6,6 +6,7 @@ import {
   Map,
   Plane,
   Backpack,
+  Warehouse,
   FolderOpen,
 } from "lucide-react";
 import Brand from "../components/Brand";
@@ -140,6 +141,17 @@ export default function Home({
                 <strong>Fire support</strong>
                 <span>
                   Prepare gun positions, firing estimates and named targets.
+                </span>
+              </span>
+              <ArrowUpRight size={22} />
+            </button>
+            <button type="button" onClick={() => onNavigate("base")}>
+              <Warehouse size={26} />
+              <span>
+                <strong>Base builder</strong>
+                <span>
+                  Arrange buildables, estimate supplies and bring your layout
+                  onto the Board.
                 </span>
               </span>
               <ArrowUpRight size={22} />

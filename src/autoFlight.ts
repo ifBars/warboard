@@ -8,6 +8,7 @@ import {
   type TerrainGrid,
 } from "./flight";
 import type { Point } from "./model";
+import { obstacleHeight, onRoad, type ObstacleGrid } from "./obstacles";
 
 export type AutoFlightOptions = {
   start: Point;
@@ -23,6 +24,7 @@ export type AutoFlightOptions = {
   maneuver: "auto" | "j-hook" | "s-turn" | "direct";
 };
 export type AutoFlightRequest = {
+  obstacles?: ObstacleGrid;
   mapName: string;
   grid: TerrainGrid;
   flight: Flight;
@@ -43,19 +45,30 @@ const mix = (a: Point, b: Point, t: number): Point => ({
   y: a.y + (b.y - a.y) * t,
 });
 
+// Prefer positioned geometry over image classification; retain manual hazard areas.
+export function flightCoverForRouting(request: AutoFlightRequest): Flight {
+  return request.obstacles
+    ? { ...request.flight, autoTrees: undefined }
+    : request.flight;
+}
+
 // Relative relief and nearby canopy are concealment proxies, not enemy LOS.
 export function corridorCost(request: AutoFlightRequest) {
-  const { grid, flight, towers, options: o } = request;
+  const { grid, towers, options: o } = request;
+  const flight = flightCoverForRouting(request);
   const density = (p: Point) => {
     const h = gridHeight(grid, p);
     if (h === null) return Infinity;
-    const canopy = coverHeight(p, flight, grid, 12);
+    const canopy = Math.max(
+      coverHeight(p, flight, grid, 12),
+      (obstacleHeight(request.obstacles, p, 12) ?? h) - h,
+    );
     const control = Math.min(
       ...towers.map((t) => meters(t, p)),
       meters(o.end, p),
     );
     if (o.style !== "combat")
-      return 1 + (canopy > 0 ? (control < 1200 ? 8 : 2) : 0);
+      return 1 + (canopy > 4 ? (control < 1200 ? 8 : 2) : 0);
     let shelter = 0,
       low = h;
     for (const [dx, dy] of [
@@ -68,7 +81,10 @@ export function corridorCost(request: AutoFlightRequest) {
       const neighbor = gridHeight(grid, q);
       if (neighbor === null) continue;
       low = Math.min(low, neighbor);
-      const obstacle = neighbor + coverHeight(q, flight, grid, 0);
+      const obstacle = Math.max(
+        neighbor + coverHeight(q, flight, grid, 0),
+        obstacleHeight(request.obstacles, q) ?? neighbor,
+      );
       shelter += Math.min(
         30,
         Math.max(0, obstacle - h - Math.max(o.clearance, canopy + 12)),
@@ -76,8 +92,8 @@ export function corridorCost(request: AutoFlightRequest) {
     }
     return (
       1 +
-      (canopy > 0 ? (control < 1200 ? 14 : 10) : 0) +
-      Math.max(0, 3 - shelter / 20) +
+      (canopy > 4 ? (control < 1200 ? 14 : 10) : 0) +
+      Math.max(0, 3 - shelter / 20 - (onRoad(request.obstacles, p) ? 1.5 : 0)) +
       Math.min(3, (h - low) / 20) +
       (control < 500 && meters(p, o.end) > 300 ? 1.8 : 0)
     );
@@ -179,7 +195,8 @@ export function searchCorridor(
   request: AutoFlightRequest,
   progress: (message: string) => void = () => {},
 ) {
-  const { grid, flight, towers, options: o } = request;
+  const { grid, towers, options: o } = request;
+  const flight = flightCoverForRouting(request);
   const metric = corridorCost(request);
   if (![o.start, o.end].every((p) => gridHeight(grid, p) !== null))
     throw Error("Choose endpoints inside terrain coverage.");
@@ -404,7 +421,12 @@ export function choosePattern(
         cost = Infinity;
         break;
       }
-      const canopy = coverHeight(p, request.flight, request.grid, 12);
+      const canopy = coverHeight(
+        p,
+        flightCoverForRouting(request),
+        request.grid,
+        12,
+      );
       cost +=
         canopy * 2 +
         Math.max(0, h - (gridHeight(request.grid, points.at(-1)!) ?? h)) * 0.2;
@@ -462,18 +484,30 @@ export function fitFlightAltitudes(
     return Math.max(
       3,
       cruise * phase,
-      coverHeight(p, request.flight, grid, 12) + 12,
+      coverHeight(p, flightCoverForRouting(request), grid, 12) + 12,
     );
   };
-  const required = samples.map((p, i) => heights[i] + clearance(p));
+  const required = samples.map((p, i) =>
+    Math.max(
+      heights[i] + clearance(p),
+      (obstacleHeight(request.obstacles, p, 12) ?? -Infinity) + 12,
+    ),
+  );
   const waypoints = flight.waypoints.map((p) => ({
     ...p,
     altitude: (gridHeight(grid, p) ?? 0) + o.clearance,
   }));
   waypoints[0].altitude =
     heights[0] +
-    Math.max(12, coverHeight(o.start, request.flight, grid, 12) + 12);
-  waypoints[waypoints.length - 1].altitude = heights.at(-1)! + 12;
+    Math.max(
+      12,
+      coverHeight(o.start, flightCoverForRouting(request), grid, 12) + 12,
+    );
+  waypoints[0].altitude = Math.max(waypoints[0].altitude, required[0]);
+  waypoints[waypoints.length - 1].altitude = Math.max(
+    heights.at(-1)! + 12,
+    required.at(-1)!,
+  );
   for (let pass = 0; pass < 3; pass++)
     for (let i = 0; i < samples.length; i++) {
       const p = samples[i],

@@ -1,3 +1,4 @@
+import { decodeGzipFile } from "./compressedData";
 import { assetUrl } from "./assetUrl";
 import type { Point } from "./model";
 export type TerrainManifest = {
@@ -118,14 +119,19 @@ async function heightAt(map: string, m: TerrainManifest, p: Point) {
   let job = chunks.get(key);
   if (!job) {
     job = (async () => {
-      const r = await fetch(assetUrl(`/terrain/${key}${import.meta.env.VITE_COMPRESSED_TERRAIN === "true" ? ".gz" : ""}`));
+      const r = await fetch(
+        assetUrl(
+          `/terrain/${key}${import.meta.env.VITE_COMPRESSED_TERRAIN === "true" ? ".gz" : ""}`,
+        ),
+      );
       if (!r.ok)
         throw new Error(
           "Could not load terrain. Try again while the local server is running.",
         );
-      const bytes = import.meta.env.VITE_COMPRESSED_TERRAIN === "true"
-        ? await new Response(r.body!.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()
-        : await r.arrayBuffer();
+      const bytes =
+        import.meta.env.VITE_COMPRESSED_TERRAIN === "true"
+          ? await decodeGzipFile(await r.arrayBuffer())
+          : await r.arrayBuffer();
       if (bytes.byteLength !== entry.bytes)
         throw new Error("Terrain file size mismatch.");
       const digest = await crypto.subtle.digest("SHA-256", bytes);

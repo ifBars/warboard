@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import {
   House,
+  Warehouse,
   Plane,
   Map,
   FolderOpen,
@@ -17,6 +18,7 @@ const items = [
   { page: "home", icon: House },
   { page: "board", icon: Map },
   { page: "flight", icon: Plane },
+  { page: "base", icon: Warehouse },
 ] satisfies { page: Page; icon: typeof House }[];
 
 function NavLinks({

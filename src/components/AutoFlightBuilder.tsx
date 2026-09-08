@@ -510,8 +510,9 @@ export default function AutoFlightBuilder({
         </div>
       )}
       <p className="flight-small">
-        Planning estimate. Tree gaps come from imagery, not a road or collision
-        map. Turn shapes do not simulate aircraft speed, banking or burn timing.
+        Planning estimate. Uses road corridors, static structure surfaces and
+        placed-tree bounds. Turn shapes do not simulate aircraft speed, banking
+        or burn timing.
       </p>
     </section>
   );

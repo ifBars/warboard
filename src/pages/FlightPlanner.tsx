@@ -1,3 +1,4 @@
+import { loadObstacles, obstacleHeight } from "../obstacles";
 import { assetUrl } from "../assetUrl";
 import AutoFlightBuilder from "../components/AutoFlightBuilder";
 import { mapImage } from "../mapImagery";
@@ -64,7 +65,9 @@ export default function FlightPlanner({
     (node: HTMLDivElement | null) => {
       if (!node || !supported) return;
       let active = true;
-      void fetch(assetUrl(`/terrain/${plan.map.name.toLowerCase()}/preview.json`))
+      void fetch(
+        assetUrl(`/terrain/${plan.map.name.toLowerCase()}/preview.json`),
+      )
         .then(async (r) => {
           if (!r.ok)
             throw new Error(
@@ -246,14 +249,18 @@ function FlightWorkspace({
       if (!node) return;
       let active = true;
       if (locations.length)
-        void terrainHeights(plan.map.name, locations)
-          .then((heights) => {
+        void Promise.all([
+          terrainHeights(plan.map.name, locations),
+          loadObstacles(plan.map.name),
+        ])
+          .then(([heights, obstacles]) => {
             if (active)
               setAnalysis({
                 key: routeKey,
                 samples: locations.map((p, i) => ({
                   ...p,
                   ground: heights[i],
+                  obstacle: obstacleHeight(obstacles, p, 12) ?? undefined,
                 })),
                 error: "",
               });
@@ -553,10 +560,23 @@ function FlightWorkspace({
               }}
             />
             {profile.some(
-              (p) =>
-                coverHeight(p, flight, grid) > 0 &&
-                p.altitude - p.ground <= coverHeight(p, flight, grid) + 10,
+              (p) => p.obstacle !== undefined && p.altitude < p.obstacle + 10,
             ) && (
+              <p className="flight-cover-warning" role="status">
+                Route enters the structure / placed-tree clearance envelope.
+                Raise the route or move it around the obstacle.
+              </p>
+            )}
+            {profile.some((p) => {
+              const cover = coverHeight(
+                p,
+                p.obstacle === undefined
+                  ? flight
+                  : { ...flight, autoTrees: undefined },
+                grid,
+              );
+              return cover > 0 && p.altitude - p.ground <= cover + 10;
+            }) && (
               <p className="flight-cover-warning" role="status">
                 Route enters estimated tree clearance: canopy height + 10 m
                 vertically, with a 10 m boundary buffer. Raise affected waypoint
@@ -754,7 +774,7 @@ function FlightWorkspace({
                       ? analysis.error
                       : collisions
                         ? `${collisions} sampled positions touch or intersect terrain.`
-                        : `No terrain intersections at sampled positions (up to ${spacing.toFixed(0)} m apart). Only terrain and enabled detected cover and manual tree areas are checked; other obstacles remain unknown.`}
+                        : `No terrain intersections at sampled positions (up to ${spacing.toFixed(0)} m apart). The profile also checks composite structure surfaces and placed-tree bounds at approximately 8 m resolution. Thin obstacles and match changes remain unknown.`}
                   {analysis.error && (
                     <button
                       type="button"
@@ -773,7 +793,8 @@ function FlightWorkspace({
               <h2>Find flatter ground</h2>
               <p>
                 Search within 150 m east/west and north/south of the selected
-                waypoint. Candidates describe ground shape only.
+                waypoint. Candidates are screened against static structure and
+                tree bounds.
               </p>
               <div className="flight-search-options">
                 <label>
@@ -878,12 +899,25 @@ function FlightWorkspace({
                 ))}
               </ul>
               <p className="flight-warning">
-                Unverified landing spots. Detected and traced cover is flagged;
-                unmarked trees, wires, buildings, water, moving objects and
-                rotor clearance are not tested. Inspect in game before landing.
+                Unverified landing spots. Static structure surfaces and
+                placed-tree bounds are screened at approximately 8 m resolution.
+                Wires, water, moving objects and exact rotor clearance are not
+                tested. Inspect in game before landing.
               </p>
             </section>
             <section className="flight-provenance">
+              <p>
+                Obstacle surfaces and placed-tree bounds:{" "}
+                <a
+                  href={`https://clutchbase.app/wardogs/3d/${plan.map.name.toLowerCase()}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Clutchbase
+                </a>{" "}
+                · approximately 8 m samples. Road corridors: Wardogs Zone.
+                Static bounds, not exact collision geometry.
+              </p>
               <p>
                 Tree detection source:{" "}
                 <a

@@ -1,17 +1,20 @@
 import { useSyncExternalStore } from "react";
 
-export type ToolPage = "board" | "fire" | "guide" | "flight";
+export type ToolPage = "board" | "fire" | "guide" | "flight" | "base";
 export type Page = "home" | ToolPage;
 export const pageNames: Record<Page, string> = {
   home: "Home",
   board: "Board",
   fire: "Fire support",
   flight: "Flight planner",
+  base: "Base builder",
   guide: "Field guide",
 };
 
 export function pageFromHash(hash: string): Page {
   switch (hash) {
+    case "#/base":
+      return "base";
     case "#/flight":
       return "flight";
     case "#/board":

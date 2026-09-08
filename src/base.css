@@ -1,0 +1,254 @@
+.base-builder {
+  height: 100dvh;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg, #191e20);
+  color: #f4f2e9;
+}
+.base-header {
+  height: auto;
+  min-height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #344247;
+}
+.base-header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+.base-header > span {
+  color: #9ab0b6;
+  font-size: 12px;
+}
+.base-view-switch {
+  display: flex;
+  margin-left: auto;
+}
+.base-workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(260px, 1fr) 280px;
+  flex: 1;
+  min-height: 0;
+}
+.base-palette,
+.base-inspector {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid #344247;
+}
+.base-inspector {
+  border-right: 0;
+  border-left: 1px solid #344247;
+}
+.base-builder h2 {
+  font-size: 14px;
+  margin: 8px 0;
+}
+.base-builder p,
+.base-builder small,
+.base-builder footer {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #a4b7bc;
+}
+.base-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 100px;
+  overflow-y: auto;
+  flex: 1;
+}
+.base-catalog button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  flex-shrink: 0;
+  padding: 10px;
+}
+.base-catalog button.active,
+.base-view-switch button[aria-pressed="true"] {
+  background: #a6dce6;
+  color: #172227;
+}
+.base-catalog button.active small {
+  color: #34484e;
+}
+.base-catalog small {
+  font-size: 10px;
+}
+.base-builder label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.base-builder label input,
+.base-builder label select {
+  width: 95px;
+}
+.base-canvas {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #151c1e;
+}
+.base-canvas > svg {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  touch-action: none;
+}
+.base-canvas footer {
+  padding: 8px 12px;
+  border-top: 1px solid #344247;
+}
+.base-preview {
+  flex: 1;
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
+}
+.base-preview canvas {
+  display: block;
+}
+.base-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.base-builder button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.base-manifest {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+.base-manifest li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+.base-warning {
+  color: #e8bb48 !important;
+}
+.base-builder :focus-visible {
+  outline: 2px solid #a6dce6;
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+  .base-workspace {
+    grid-template-columns: 180px minmax(240px, 1fr) 230px;
+  }
+}
+@media (max-width: 800px) {
+  .base-builder {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .base-header {
+    flex-wrap: wrap;
+  }
+  .base-workspace {
+    display: flex;
+    flex-direction: column;
+  }
+  .base-palette {
+    max-height: 280px;
+  }
+  .base-canvas {
+    height: 55dvh;
+    flex: none;
+  }
+  .base-inspector {
+    border-left: 0;
+    border-top: 1px solid #344247;
+  }
+  .base-catalog {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .base-catalog button {
+    min-width: 0;
+  }
+}
+.base-canvas-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #344247;
+}
+.base-canvas-controls span {
+  font-size: 11px;
+  color: #a4b7bc;
+}
+.base-builder .base-catalog button {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+@media (max-width: 800px) {
+  .base-header {
+    padding-left: 64px;
+  }
+  .base-palette > label,
+  .base-palette > button,
+  .base-palette > input,
+  .base-palette > h2 {
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 740px) {
+  .base-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+  .base-header h1 {
+    grid-column: 1;
+    font-size: 16px;
+  }
+  .base-header > span {
+    grid-column: 2 / 4;
+    font-size: 10px;
+  }
+  .base-view-switch {
+    grid-column: 1;
+    margin-left: 0;
+  }
+  .base-view-switch button {
+    font-size: 11px;
+    padding: 8px;
+  }
+  .base-palette {
+    height: 300px;
+    max-height: none;
+    flex: none;
+  }
+  .base-palette h2 {
+    margin: 0;
+  }
+  .base-catalog {
+    min-height: 0;
+  }
+}
