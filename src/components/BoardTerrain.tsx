@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import FlightMap from "./FlightMap";
 import { emptyFlight, isTerrainGrid, type TerrainGrid } from "../flight";
 import { forestOverlay } from "../forestOverlay";
+import { loadFeatures, type TerrainFeatures } from "../terrainFeatures";
 import type { Plan, Point } from "../model";
 import type { LayerSettings } from "./ReferenceLayer";
 import "../flight.css";
@@ -30,10 +31,28 @@ export default function BoardTerrain({
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [exaggeration, setExaggeration] = useState(1);
+  const [features, setFeatures] = useState<TerrainFeatures | null>(null);
+  const [featureStatus, setFeatureStatus] = useState("");
+  const [structures, setStructures] = useState(true),
+    [canopy, setCanopy] = useState(true);
   const mount = useCallback(
     (node: HTMLDivElement | null) => {
       if (!node) return;
       const abort = new AbortController();
+      setFeatureStatus("Loading buildings and trees…");
+      loadFeatures(plan.map.name).then(
+        (next) => {
+          if (abort.signal.aborted) return;
+          setFeatures(next);
+          setFeatureStatus("");
+        },
+        (e: unknown) => {
+          if (!abort.signal.aborted)
+            setFeatureStatus(
+              e instanceof Error ? e.message : "Terrain detail unavailable.",
+            );
+        },
+      );
       void fetch(assetUrl(`/terrain/${plan.map.name.toLowerCase()}/preview.json`), {
         signal: abort.signal,
       })
@@ -94,10 +113,38 @@ export default function BoardTerrain({
               focus: null,
               mode: "3d",
               exaggeration,
+              features,
+              mission: plan.mission,
+              structures,
+              canopy,
               onAdd,
               onSelect: () => {},
             }}
           />
+          <div className="board-features" role="group" aria-label="3D detail">
+            <label>
+              <input
+                type="checkbox"
+                checked={structures}
+                disabled={!features}
+                onChange={(e) => setStructures(e.target.checked)}
+              />
+              Structures
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={canopy}
+                disabled={!features}
+                onChange={(e) => setCanopy(e.target.checked)}
+              />
+              Trees
+            </label>
+            {featureStatus && <span role="status">{featureStatus}</span>}
+            {plan.mission?.gun && (
+              <span>Fire arcs are schematic connectors, not shell paths.</span>
+            )}
+          </div>
           <label className="board-height">
             Height scale{" "}
             <select

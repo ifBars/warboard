@@ -36,7 +36,20 @@ import { createCursorStore } from "../cursor";
 import { planBriefing } from "../briefing";
 import { readView, saveView, type ViewPreferences } from "../preferences";
 import { listPlans, type SavedPlan } from "../library";
-import { emptyMission, coordinateText, type Mission } from "../ballistics";
+import { markerLabel, type MarkerSymbol } from "../markers";
+import MarkerPicker from "../components/MarkerPicker";
+import { markerIcons } from "../components/markerIcons";
+import VisibilityCheck from "../components/VisibilityCheck";
+import VisibilityOverlay from "../components/VisibilityOverlay";
+import ShareInbox from "../components/ShareInbox";
+import { applyShared, encodeShare, shareLink, sharedFrom } from "../share";
+import type { Analysis } from "../visibilityAnalysis";
+import {
+  emptyMission,
+  coordinateText,
+  parseCoordinates,
+  type Mission,
+} from "../ballistics";
 import { mapData, toGame, toPixel } from "../cartography";
 import { visibleMap, type Camera } from "../viewport";
 import {
@@ -47,6 +60,7 @@ import {
   useState,
   type PointerEvent,
   type KeyboardEvent,
+  type ClipboardEvent,
 } from "react";
 import {
   ArrowUpRight,
@@ -77,6 +91,7 @@ import {
   Grid2X2,
   Crosshair,
   SlidersHorizontal,
+  MapPin,
 } from "lucide-react";
 import {
   colors,
@@ -97,6 +112,7 @@ const tools = [
   { id: "line", label: "Line", key: "L", icon: Minus },
   { id: "arrow", label: "Arrow", key: "A", icon: ArrowUpRight },
   { id: "note", label: "Note", key: "N", icon: StickyNote },
+  { id: "marker", label: "Marker", key: "M", icon: MapPin },
   { id: "ruler", label: "Measure", key: "R", icon: Ruler },
   { id: "circle", label: "Area", key: "C", icon: Circle },
   { id: "erase", label: "Erase", key: "E", icon: Eraser },
@@ -109,8 +125,10 @@ const hints: Record<Tool, string> = {
   arrow: "Drag in the direction of travel.",
   note: "Click the map to place a note.",
   erase: "Click an annotation to erase it.",
-  ruler: "Drag to measure distance and bearing. Imported maps use pixels.",
-  circle: "Drag from the center to mark an area.",
+  marker: "Click the map to place the chosen tactical marker.",
+  ruler:
+    "Drag to measure distance and bearing. Select a measurement to check line of sight.",
+  circle: "Drag from the center to mark an area. Select it to check coverage.",
 };
 type Gesture =
   | { kind: "draw"; mark: Mark }
@@ -211,11 +229,14 @@ export default function App({
     return () => observer.disconnect();
   }, []);
   const [notePreset, setNotePreset] = useState("New note");
+  const [symbol, setSymbol] = useState<MarkerSymbol>("infantry");
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [panel, setPanel] = useState(true),
     [drawings, setDrawings] = useState(true);
   const [history, setHistory] = useState<Plan[]>([]),
     [future, setFuture] = useState<Plan[]>([]);
   const [error, setError] = useState(warning),
+    [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [menu, setMenu] = useState(false),
     [help, setHelp] = useState(false);
@@ -537,6 +558,23 @@ export default function App({
         points: [p],
         text: "",
       };
+      if (tool === "marker") {
+        mark.symbol = symbol;
+        if (e.pointerType === "touch") {
+          gesture.current = {
+            kind: "tap",
+            action: "note",
+            point: p,
+            mark,
+            start: { x: e.clientX, y: e.clientY },
+            camera,
+          };
+          e.currentTarget.setPointerCapture(e.pointerId);
+          return;
+        }
+        placeMarker(mark);
+        return;
+      }
       if (tool === "note") {
         mark.text = notePreset;
         if (e.pointerType === "touch") {
@@ -560,6 +598,12 @@ export default function App({
       setSelected(null);
     }
     e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function placeMarker(mark: Mark) {
+    setPanel(true);
+    setSection("board");
+    commit({ ...plan, marks: [...plan.marks, mark] });
+    setSelected(mark.id);
   }
   function placeNote(mark: Mark) {
     setPanel(true);
@@ -657,7 +701,10 @@ export default function App({
       if (missionDraft) updateMission(missionDraft);
       setMissionDraft(null);
     } else if (g.kind === "tap") {
-      if (g.action === "note" && g.mark) placeNote(g.mark);
+      if (g.action === "note" && g.mark) {
+        if (g.mark.type === "marker") placeMarker(g.mark);
+        else placeNote(g.mark);
+      }
       else if (g.action === "erase" && g.id) remove(g.id);
       else if (g.action === "gun" || g.action === "target") {
         const coordinate = toGame(g.point, plan.map);
@@ -852,6 +899,49 @@ export default function App({
       setBusy(false);
     }
   }
+  async function copyShareLink() {
+    setMenu(false);
+    const shared = sharedFrom(plan);
+    if (!shared) {
+      setError(
+        "Share links work for Bakurani and Ozeti. Export the editable plan to share an imported map.",
+      );
+      return;
+    }
+    try {
+      const url = shareLink(await encodeShare(shared));
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        window.prompt("Copy this share link", url);
+      }
+      setNotice(
+        url.length > 2000
+          ? `Share link copied (${url.length} characters). It is too long for one Discord message; remove long freehand drawings or send the plan file.`
+          : `Share link copied (${url.length} characters). It carries drawings, fire missions and briefing, not your map image.`,
+      );
+    } catch {
+      setError("Could not create a share link in this browser.");
+    }
+  }
+  // Paste a game coordinate copy (x12.34, y56.78) anywhere on the board: the
+  // first sets the gun, later pastes move only the target.
+  function pasteCoordinate(e: ClipboardEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+    const point = parseCoordinates(e.clipboardData.getData("text"));
+    if (!point || !mapData(plan.map)) return;
+    e.preventDefault();
+    const mission = plan.mission ?? emptyMission();
+    const field = mission.gun ? "target" : "gun";
+    updateMission({ ...mission, [field]: point });
+    setSection("fire");
+    setPanel(true);
+    setNotice(
+      field === "gun"
+        ? `Gun set to ${coordinateText(point)}. Paste the next copy to set the target.`
+        : `Target set to ${coordinateText(point)}. Clear the gun in Fire support to move it.`,
+    );
+  }
   async function exportPng(currentView = false) {
     setMenu(false);
     setBusy(true);
@@ -942,6 +1032,7 @@ export default function App({
         hidden={page === "home" || page === "flight" || page === "base"}
         className={`app ${panel ? "" : "panel-hidden"} section-${section}`}
         onKeyDown={keys}
+        onPaste={pasteCoordinate}
         onPointerDownCapture={(e) => {
           const target = e.target as Element;
           if (!target.closest(".export-wrap")) setMenu(false);
@@ -1289,6 +1380,18 @@ export default function App({
                         Squad briefing{" "}
                         <span>TXT · notes, targets & supplies</span>
                       </button>
+                      <button
+                        type="button"
+                        disabled={!sharedFrom(plan)}
+                        onClick={() => void copyShareLink()}
+                      >
+                        Copy share link{" "}
+                        <span>
+                          {sharedFrom(plan)
+                            ? "URL · drawings, markers & fire missions"
+                            : "Bakurani and Ozeti only"}
+                        </span>
+                      </button>
                       <OfflineStatus onError={setError} />
                     </div>
                   )}
@@ -1408,6 +1511,13 @@ export default function App({
                       viewport={viewport}
                     />
                     {treeOutlines && <BoardTrees plan={plan} />}
+                    <VisibilityOverlay
+                      analysis={analysis}
+                      marks={plan.marks}
+                      map={plan.map}
+                      unit={overlayUnit}
+                      layer="under"
+                    />
                     <g
                       data-annotations="true"
                       display={drawings ? undefined : "none"}
@@ -1459,6 +1569,15 @@ export default function App({
                       rings={rings}
                       unit={overlayUnit}
                     />
+                    {drawings && (
+                      <VisibilityOverlay
+                        analysis={analysis}
+                        marks={plan.marks}
+                        map={plan.map}
+                        unit={overlayUnit}
+                        layer="over"
+                      />
+                    )}
                     {drawings && active && (
                       <g data-selection="true" pointerEvents="none">
                         <Shape
@@ -1629,9 +1748,34 @@ export default function App({
                       </button>
                     ))}
                   </div>
+                  {((tool === "marker" && !active) ||
+                    active?.type === "marker") && (
+                    <MarkerPicker
+                      value={active?.symbol ?? symbol}
+                      onPick={(next) => {
+                        setSymbol(next);
+                        if (active?.type === "marker") editMark({ symbol: next });
+                        else {
+                          setTerrainView(false);
+                          setTool("marker");
+                        }
+                      }}
+                    />
+                  )}
+                  {active?.type === "marker" && (
+                    <>
+                      <label htmlFor="marker-text">Marker label</label>
+                      <input
+                        id="marker-text"
+                        maxLength={40}
+                        value={active.text}
+                        onChange={(e) => editMark({ text: e.target.value })}
+                      />
+                    </>
+                  )}
                   {!active && (
                     <>
-                      <label htmlFor="note-preset">Quick marker</label>
+                      <label htmlFor="note-preset">Quick note</label>
                       <select
                         id="note-preset"
                         value={notePreset}
@@ -1658,7 +1802,7 @@ export default function App({
                       </select>
                     </>
                   )}
-                  {active?.type !== "note" && (
+                  {active?.type !== "note" && active?.type !== "marker" && (
                     <>
                       <label className="weight-label" htmlFor="weight">
                         Stroke width<span>{active?.width ?? width} px</span>
@@ -1692,6 +1836,16 @@ export default function App({
                       </small>
                     </>
                   )}
+                  {(active?.type === "ruler" || active?.type === "circle") &&
+                    mapData(plan.map) && (
+                      <VisibilityCheck
+                        key={active.id}
+                        plan={plan}
+                        mark={active}
+                        analysis={analysis}
+                        onResult={setAnalysis}
+                      />
+                    )}
                 </section>
                 <section className="annotations">
                   <div className="section-heading">
@@ -1757,7 +1911,9 @@ export default function App({
                               className="annotation-icon"
                               style={{ color: m.color }}
                             >
-                              {m.type === "note" ? (
+                              {m.type === "marker" && m.symbol ? (
+                                <MarkerIcon symbol={m.symbol} />
+                              ) : m.type === "note" ? (
                                 <StickyNote size={17} />
                               ) : m.type === "arrow" ? (
                                 <ArrowUpRight size={18} />
@@ -1766,7 +1922,11 @@ export default function App({
                               )}
                             </span>
                             <span>
-                              {m.type === "note"
+                              {m.type === "marker"
+                                ? m.text
+                                  ? `${markerLabel(m.symbol)} · ${m.text}`
+                                  : markerLabel(m.symbol)
+                                : m.type === "note"
                                 ? m.text || "Empty note"
                                 : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : "Line"} ${i + 1}`}
                             </span>
@@ -1819,6 +1979,46 @@ export default function App({
             )}
           </aside>
         </div>
+        <ShareInbox
+          busy={busy}
+          onOpen={async (shared, mode) => {
+            try {
+              let base = plan;
+              if (plan.map.name !== shared.map) {
+                await flushSaves();
+                base = await openMap(
+                  builtIns.find((m) => m.name === shared.map)!.id,
+                );
+              }
+              commit(applyShared(base, shared, mode));
+              if (base !== plan) fit(base.map);
+              setSelected(null);
+              setPlacement(null);
+              visit("board");
+              setNotice(
+                `Opened shared plan “${shared.name}”. Undo reverses it.`,
+              );
+            } catch (e) {
+              setError(
+                e instanceof Error
+                  ? e.message
+                  : "Could not open the shared plan.",
+              );
+            }
+          }}
+        />
+        {notice && !error && (
+          <div className="error notice" role="status">
+            <span>{notice}</span>
+            <button
+              type="button"
+              aria-label="Dismiss message"
+              onClick={() => setNotice("")}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
         {error && (
           <div className="error" role="alert">
             <span>{error}</span>
@@ -1872,4 +2072,9 @@ export default function App({
       </div>
     </div>
   );
+}
+
+function MarkerIcon({ symbol }: { symbol: MarkerSymbol }) {
+  const Icon = markerIcons[symbol];
+  return <Icon size={17} />;
 }

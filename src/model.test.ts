@@ -47,6 +47,31 @@ describe("Portable plan boundary", () => {
     q.marks.push(q.marks[0]);
     expect(() => validatePlan(q)).toThrow();
   });
+  test("accepts known tactical markers and rejects unknown symbols", () => {
+    const p = fixture();
+    p.marks.push({
+      id: "marker-1",
+      type: "marker",
+      color: "#ed796a",
+      width: 5,
+      points: [{ x: 10, y: 20 }],
+      text: "Squad 2",
+      symbol: "antiair",
+    });
+    expect(validatePlan(JSON.parse(JSON.stringify(p)))).toEqual(p);
+    for (const patch of [
+      { symbol: "<script>" },
+      { symbol: undefined },
+      { points: [{ x: 1, y: 2 }, { x: 3, y: 4 }] },
+    ]) {
+      const q = structuredClone(p);
+      Object.assign(q.marks[1], patch);
+      expect(() => validatePlan(q)).toThrow();
+    }
+    const r = fixture();
+    Object.assign(r.marks[0], { symbol: "fob" });
+    expect(() => validatePlan(r)).toThrow();
+  });
   test("rejects unsupported versions and oversized decoded images", () => {
     expect(() => validatePlan({ ...fixture(), version: 2 })).toThrow();
     const p = fixture();

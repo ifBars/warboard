@@ -1,6 +1,7 @@
 import { arrowHead, type Mark, type Plan } from "../model";
 import { toGame } from "../cartography";
 import { rangeBearing } from "../ballistics";
+import { markerIcons } from "./markerIcons";
 
 export default function Shape({
   mark: m,
@@ -21,7 +22,9 @@ export default function Shape({
     startGame && endGame ? rangeBearing(startGame, endGame) : null;
   return (
     <g data-mark={m.id} className="mark">
-      {m.type === "note" ? (
+      {m.type === "marker" ? (
+        <MarkerShape mark={m} selected={selected} unit={unit} />
+      ) : m.type === "note" ? (
         <g transform={`translate(${p.x} ${p.y}) scale(${unit})`}>
           <path d="M0 0 L13 -18" stroke={m.color} strokeWidth="3" />
           <rect
@@ -112,6 +115,59 @@ export default function Shape({
             </text>
           )}
         </>
+      )}
+    </g>
+  );
+}
+
+function MarkerShape({
+  mark: m,
+  selected,
+  unit,
+}: {
+  mark: Mark;
+  selected: boolean;
+  unit: number;
+}) {
+  const p = m.points[0],
+    Icon = m.symbol ? markerIcons[m.symbol] : null,
+    label = m.text.length > 28 ? m.text.slice(0, 27) + "…" : m.text;
+  return (
+    <g transform={`translate(${p.x} ${p.y}) scale(${unit})`}>
+      <rect
+        x="-17"
+        y="-17"
+        width="34"
+        height="34"
+        rx="7"
+        fill="#20241f"
+        stroke={selected ? "#fff" : m.color}
+        strokeWidth="2.5"
+      />
+      {Icon && (
+        <Icon
+          x={-11}
+          y={-11}
+          size={22}
+          color={m.color}
+          strokeWidth={2.2}
+          aria-hidden
+        />
+      )}
+      {label && (
+        <text
+          y="35"
+          textAnchor="middle"
+          fontFamily="Segoe UI, sans-serif"
+          fontSize="15"
+          fontWeight="600"
+          fill={m.color}
+          stroke="#20241f"
+          strokeWidth="4"
+          paintOrder="stroke"
+        >
+          {label}
+        </text>
       )}
     </g>
   );

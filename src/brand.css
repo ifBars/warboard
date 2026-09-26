@@ -1113,6 +1113,9 @@ button.primary:hover {
 .board-terrain { position:absolute; inset:0; }
 .board-terrain .flight-map { height:100%; }
 .board-height { position:absolute; top:16px; right:16px; padding:8px; background:#1c2529; display:flex; gap:8px; align-items:center; font-size:12px; }
+.board-features { position:absolute; top:16px; right:150px; padding:8px 10px; background:#1c2529; display:flex; gap:12px; align-items:center; font-size:12px; max-width:calc(100% - 180px); flex-wrap:wrap; }
+.board-features label { display:flex; gap:6px; align-items:center; }
+.board-features [role="status"] { color:var(--muted, #b9c1b5); }
 
 .app .tools { gap:3px; padding:10px 4px; overflow:visible; min-height:0; }
 .app .tools > button { width:42px; height:clamp(24px, calc((100dvh - 150px) / 12), 42px); min-height:0; padding:5px; flex-shrink:1; }
@@ -1123,6 +1126,7 @@ button.primary:hover {
   .app .tools { padding-top:64px; }
   .app .tools > button { width:38px; }
   .board-height { top:60px; right:8px; }
+  .board-features { top:104px; right:8px; max-width:calc(100% - 60px); }
 }
 
 .terrain-loading { position:relative; display:grid; place-items:center; isolation:isolate; flex:1; min-height:320px; width:100%; height:100%; overflow:hidden; background:#171d20; color:#e9eeec; }

@@ -1,6 +1,7 @@
 import type { Mission } from "./ballistics";
 import { validBase, type BasePlan } from "./base";
 import { isFlight, type Flight } from "./flight";
+import { isMarkerSymbol, type MarkerSymbol } from "./markers";
 import { resourceNames, type Operations } from "./operations";
 export type Point = { x: number; y: number };
 export type Tool =
@@ -12,14 +13,17 @@ export type Tool =
   | "note"
   | "erase"
   | "ruler"
-  | "circle";
+  | "circle"
+  | "marker";
 export type Mark = {
   id: string;
-  type: "pen" | "line" | "arrow" | "note" | "ruler" | "circle";
+  type: "pen" | "line" | "arrow" | "note" | "ruler" | "circle" | "marker";
   color: string;
   width: number;
   points: Point[];
   text: string;
+  /** Present only on markers. */
+  symbol?: MarkerSymbol;
 };
 export type Plan = {
   version: 1;
@@ -70,7 +74,18 @@ export function validatePlan(value: unknown): Plan {
       typeof m.id !== "string" ||
       !/^[\w-]{1,80}$/.test(m.id) ||
       ids.has(m.id) ||
-      !["pen", "line", "arrow", "note", "ruler", "circle"].includes(m.type) ||
+      ![
+        "pen",
+        "line",
+        "arrow",
+        "note",
+        "ruler",
+        "circle",
+        "marker",
+      ].includes(m.type) ||
+      (m.type === "marker"
+        ? !isMarkerSymbol(m.symbol)
+        : m.symbol !== undefined) ||
       !/^#[0-9a-f]{6}$/i.test(m.color) ||
       !Number.isFinite(m.width) ||
       m.width < 1 ||
@@ -81,7 +96,7 @@ export function validatePlan(value: unknown): Plan {
       m.points.length < 1 ||
       m.points.length > 20000 ||
       !m.points.every(point) ||
-      (m.type === "note"
+      (m.type === "note" || m.type === "marker"
         ? m.points.length !== 1
         : m.type !== "pen" && m.points.length !== 2)
     )
