@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { validatePlan, moveMark, type Plan } from "./model";
+import { validatePlan, moveMark, polygonArea, type Plan } from "./model";
 const fixture = (): Plan => ({
   version: 1,
   name: "Route",
@@ -71,6 +71,26 @@ describe("Portable plan boundary", () => {
     const r = fixture();
     Object.assign(r.marks[0], { symbol: "fob" });
     expect(() => validatePlan(r)).toThrow();
+  });
+  test("zones need three to five hundred corners", () => {
+    const p = fixture();
+    const zone = {
+      id: "zone-1",
+      type: "polygon" as const,
+      color: "#73b7da",
+      width: 4,
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+      ],
+      text: "Objective",
+    };
+    p.marks.push(zone);
+    expect(validatePlan(structuredClone(p))).toEqual(p);
+    p.marks[1] = { ...zone, points: zone.points.slice(0, 2) };
+    expect(() => validatePlan(p)).toThrow();
+    expect(polygonArea(zone.points)).toBe(50);
   });
   test("rejects unsupported versions and oversized decoded images", () => {
     expect(() => validatePlan({ ...fixture(), version: 2 })).toThrow();

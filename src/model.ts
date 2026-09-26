@@ -14,10 +14,19 @@ export type Tool =
   | "erase"
   | "ruler"
   | "circle"
-  | "marker";
+  | "marker"
+  | "polygon";
 export type Mark = {
   id: string;
-  type: "pen" | "line" | "arrow" | "note" | "ruler" | "circle" | "marker";
+  type:
+    | "pen"
+    | "line"
+    | "arrow"
+    | "note"
+    | "ruler"
+    | "circle"
+    | "marker"
+    | "polygon";
   color: string;
   width: number;
   points: Point[];
@@ -82,6 +91,7 @@ export function validatePlan(value: unknown): Plan {
         "ruler",
         "circle",
         "marker",
+        "polygon",
       ].includes(m.type) ||
       (m.type === "marker"
         ? !isMarkerSymbol(m.symbol)
@@ -96,7 +106,9 @@ export function validatePlan(value: unknown): Plan {
       m.points.length < 1 ||
       m.points.length > 20000 ||
       !m.points.every(point) ||
-      (m.type === "note" || m.type === "marker"
+      (m.type === "polygon"
+        ? m.points.length < 3 || m.points.length > 500
+        : m.type === "note" || m.type === "marker"
         ? m.points.length !== 1
         : m.type !== "pen" && m.points.length !== 2)
     )
@@ -184,3 +196,13 @@ export const moveMark = (m: Mark, delta: Point): Mark => ({
   ...m,
   points: m.points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y })),
 });
+/** Shoelace area in square map pixels. */
+export function polygonArea(points: Point[]) {
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i],
+      b = points[(i + 1) % points.length];
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}

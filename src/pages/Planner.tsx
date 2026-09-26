@@ -92,6 +92,7 @@ import {
   Crosshair,
   SlidersHorizontal,
   MapPin,
+  Pentagon,
 } from "lucide-react";
 import {
   colors,
@@ -115,6 +116,7 @@ const tools = [
   { id: "marker", label: "Marker", key: "M", icon: MapPin },
   { id: "ruler", label: "Measure", key: "R", icon: Ruler },
   { id: "circle", label: "Area", key: "C", icon: Circle },
+  { id: "polygon", label: "Zone", key: "G", icon: Pentagon },
   { id: "erase", label: "Erase", key: "E", icon: Eraser },
 ] as const;
 const hints: Record<Tool, string> = {
@@ -129,6 +131,8 @@ const hints: Record<Tool, string> = {
   ruler:
     "Drag to measure distance and bearing. Select a measurement to check line of sight.",
   circle: "Drag from the center to mark an area. Select it to check coverage.",
+  polygon:
+    "Click to add corners. Click the first corner, double-click or press Enter to finish; Backspace removes a corner.",
 };
 type Gesture =
   | { kind: "draw"; mark: Mark }
@@ -230,6 +234,7 @@ export default function App({
   }, []);
   const [notePreset, setNotePreset] = useState("New note");
   const [symbol, setSymbol] = useState<MarkerSymbol>("infantry");
+  const [polyHover, setPolyHover] = useState<Point | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [panel, setPanel] = useState(true),
     [drawings, setDrawings] = useState(true);
@@ -250,8 +255,12 @@ export default function App({
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const active = plan.marks.find((m) => m.id === selected);
   const overlayUnit = visibleMap(camera, viewport).unit;
-  const shown = draft
-    ? [...plan.marks.filter((m) => m.id !== draft.id), draft]
+  const draftShown =
+    draft?.type === "polygon" && polyHover
+      ? { ...draft, points: [...draft.points, polyHover] }
+      : draft;
+  const shown = draftShown
+    ? [...plan.marks.filter((m) => m.id !== draftShown.id), draftShown]
     : plan.marks;
   function visit(next: Page) {
     setPlacement(null);
@@ -550,6 +559,10 @@ export default function App({
         );
         return;
       }
+      if (tool === "polygon") {
+        polygonClick(p, e.detail);
+        return;
+      }
       const mark: Mark = {
         id: crypto.randomUUID(),
         type: tool,
@@ -599,6 +612,48 @@ export default function App({
     }
     e.currentTarget.setPointerCapture(e.pointerId);
   }
+  function polygonClick(p: Point, clicks: number) {
+    const current = draft?.type === "polygon" ? draft : null;
+    if (!current) {
+      setSelected(null);
+      setDraft({
+        id: crypto.randomUUID(),
+        type: "polygon",
+        color,
+        width,
+        points: [p],
+        text: "",
+      });
+      return;
+    }
+    const first = current.points[0];
+    const closing =
+      current.points.length >= 3 &&
+      Math.hypot(p.x - first.x, p.y - first.y) < overlayUnit * 14;
+    if (closing || clicks >= 2) {
+      finishPolygon(current);
+      return;
+    }
+    if (current.points.length >= 500) {
+      finishPolygon(current);
+      return;
+    }
+    setDraft({ ...current, points: [...current.points, p] });
+  }
+  function finishPolygon(current = draft) {
+    setDraft(null);
+    setPolyHover(null);
+    if (!current || current.type !== "polygon") return;
+    // A double-click leaves a duplicate last corner; drop near-duplicates.
+    const points = current.points.filter(
+      (p, i, all) =>
+        i === 0 || Math.hypot(p.x - all[i - 1].x, p.y - all[i - 1].y) > 1,
+    );
+    if (points.length < 3) return;
+    const mark = { ...current, points };
+    commit({ ...plan, marks: [...plan.marks, mark] });
+    setSelected(mark.id);
+  }
   function placeMarker(mark: Mark) {
     setPanel(true);
     setSection("board");
@@ -618,6 +673,8 @@ export default function App({
   }
   function move(e: PointerEvent<SVGSVGElement>) {
     setCursor(toGame(position(e.clientX, e.clientY), plan.map));
+    if (draft?.type === "polygon" && !gesture.current)
+      setPolyHover(position(e.clientX, e.clientY));
     if (touches.current.has(e.pointerId))
       touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const g = gesture.current;
@@ -752,7 +809,25 @@ export default function App({
   function keys(e: KeyboardEvent) {
     if (help || library) return;
     if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+    if (draft?.type === "polygon") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finishPolygon();
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        if (draft.points.length > 1)
+          setDraft({ ...draft, points: draft.points.slice(0, -1) });
+        else {
+          setDraft(null);
+          setPolyHover(null);
+        }
+        return;
+      }
+    }
     if (e.key === "Escape") {
+      setPolyHover(null);
       setLandmark(null);
       setPlacement(null);
       gesture.current = null;
@@ -1762,6 +1837,17 @@ export default function App({
                       }}
                     />
                   )}
+                  {active?.type === "polygon" && (
+                    <>
+                      <label htmlFor="marker-text">Zone label</label>
+                      <input
+                        id="marker-text"
+                        maxLength={40}
+                        value={active.text}
+                        onChange={(e) => editMark({ text: e.target.value })}
+                      />
+                    </>
+                  )}
                   {active?.type === "marker" && (
                     <>
                       <label htmlFor="marker-text">Marker label</label>
@@ -1926,9 +2012,11 @@ export default function App({
                                 ? m.text
                                   ? `${markerLabel(m.symbol)} · ${m.text}`
                                   : markerLabel(m.symbol)
+                                : m.type === "polygon" && m.text
+                                ? m.text
                                 : m.type === "note"
                                 ? m.text || "Empty note"
-                                : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : "Line"} ${i + 1}`}
+                                : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : m.type === "polygon" ? "Zone" : "Line"} ${i + 1}`}
                             </span>
                           </button>
                           <button

@@ -527,7 +527,9 @@ export function createFlightScene(
               x: first.x + Math.cos((i / 96) * Math.PI * 2) * radius,
               y: first.y + Math.sin((i / 96) * Math.PI * 2) * radius,
             }))
-          : mark.points;
+          : mark.type === "polygon"
+            ? [...mark.points, first]
+            : mark.points;
       const drape = (pixels: Point[]) => {
         const vertices: T.Vector3[] = [];
         for (let i = 1; i < pixels.length; i++) {

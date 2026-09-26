@@ -1,5 +1,5 @@
-import { arrowHead, type Mark, type Plan } from "../model";
-import { toGame } from "../cartography";
+import { arrowHead, polygonArea, type Mark, type Plan } from "../model";
+import { mapData, toGame } from "../cartography";
 import { rangeBearing } from "../ballistics";
 import { markerIcons } from "./markerIcons";
 
@@ -50,6 +50,8 @@ export default function Shape({
           </text>
           <circle r="5" fill={m.color} />
         </g>
+      ) : m.type === "polygon" ? (
+        <PolygonShape mark={m} selected={selected} unit={unit} map={map} />
       ) : m.type === "circle" ? (
         <circle
           cx={p.x}
@@ -170,5 +172,60 @@ function MarkerShape({
         </text>
       )}
     </g>
+  );
+}
+
+function areaText(mark: Mark, map?: Plan["map"]) {
+  const data = map && mapData(map);
+  if (!data || !map) return "";
+  const perPixel = ((data.tileBounds.maxX - data.tileBounds.minX) * 100) / map.width;
+  const m2 = polygonArea(mark.points) * perPixel * perPixel;
+  return m2 >= 100000
+    ? `${(m2 / 1e6).toFixed(2)} km²`
+    : m2 >= 10000
+      ? `${(m2 / 10000).toFixed(1)} ha`
+      : `${Math.round(m2)} m²`;
+}
+function PolygonShape({
+  mark: m,
+  selected,
+  unit,
+  map,
+}: {
+  mark: Mark;
+  selected: boolean;
+  unit: number;
+  map?: Plan["map"];
+}) {
+  const points = m.points.map((p) => `${p.x},${p.y}`).join(" ");
+  const cx = m.points.reduce((n, p) => n + p.x, 0) / m.points.length,
+    cy = m.points.reduce((n, p) => n + p.y, 0) / m.points.length;
+  const label = [m.text, areaText(m, map)].filter(Boolean).join(" · ");
+  return (
+    <>
+      <polygon
+        points={points}
+        fill={`${m.color}26`}
+        stroke={selected ? "#fff" : m.color}
+        strokeWidth={m.width * unit}
+        strokeLinejoin="round"
+      />
+      {label && m.points.length >= 3 && (
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          fontFamily="Segoe UI, sans-serif"
+          fontSize={17 * unit}
+          fontWeight="600"
+          fill={m.color}
+          stroke="#202527"
+          strokeWidth={4 * unit}
+          paintOrder="stroke"
+        >
+          {label}
+        </text>
+      )}
+    </>
   );
 }
