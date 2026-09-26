@@ -65,35 +65,95 @@ function shade(geometry: T.BufferGeometry, color: (y: number, normalY: number) =
   geometry.setAttribute("color", new T.BufferAttribute(colors, 3));
   return geometry;
 }
-function pineGeometry() {
-  // Two stacked crowns and a short trunk, unit height, base at 0.
-  const parts = [
-    new T.CylinderGeometry(0.06, 0.08, 0.2, 5).translate(0, 0.1, 0),
-    new T.ConeGeometry(0.5, 0.55, 7).translate(0, 0.43, 0),
-    new T.ConeGeometry(0.36, 0.45, 7).translate(0, 0.775, 0),
-  ].map((g) => g.toNonIndexed());
-  const count = parts.reduce((n, g) => n + g.getAttribute("position").count, 0);
+const hash = (n: number) => {
+  const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return v - Math.floor(v);
+};
+// Smooth value noise over game units, used to group trees into stands and gaps.
+function noise(x: number, y: number) {
+  const x0 = Math.floor(x),
+    y0 = Math.floor(y),
+    tx = x - x0,
+    ty = y - y0;
+  const corner = (cx: number, cy: number) => hash(cx * 157.1 + cy * 311.7);
+  const sx = tx * tx * (3 - 2 * tx),
+    sy = ty * ty * (3 - 2 * ty);
+  const top = corner(x0, y0) + (corner(x0 + 1, y0) - corner(x0, y0)) * sx,
+    bottom =
+      corner(x0, y0 + 1) + (corner(x0 + 1, y0 + 1) - corner(x0, y0 + 1)) * sx;
+  return top + (bottom - top) * sy;
+}
+function merge(parts: T.BufferGeometry[], wobble: number, seed: number) {
+  const flat = parts.map((g) => g.toNonIndexed());
+  const count = flat.reduce((n, g) => n + g.getAttribute("position").count, 0);
   const position = new Float32Array(count * 3);
   let offset = 0;
-  for (const g of parts) {
+  for (const g of flat) {
     position.set(g.getAttribute("position").array as Float32Array, offset);
     offset += g.getAttribute("position").count * 3;
     g.dispose();
   }
+  for (const g of parts) g.dispose();
+  // Displace crown vertices consistently (shared positions move together)
+  // so silhouettes are irregular rather than perfect cones.
+  for (let i = 0; i < position.length; i += 3) {
+    const y = position[i + 1];
+    if (y < 0.18) continue;
+    const key =
+      Math.round(position[i] * 50) * 7.1 +
+      Math.round(y * 50) * 13.3 +
+      Math.round(position[i + 2] * 50) * 3.7 +
+      seed;
+    position[i] *= 1 + (hash(key) - 0.5) * wobble;
+    position[i + 2] *= 1 + (hash(key + 1) - 0.5) * wobble;
+    position[i + 1] += (hash(key + 2) - 0.5) * wobble * 0.15;
+  }
   const geometry = new T.BufferGeometry();
   geometry.setAttribute("position", new T.BufferAttribute(position, 3));
   geometry.computeVertexNormals();
-  const trunk = new T.Color(0x5b4632),
-    low = new T.Color(0x2f5a2b),
-    high = new T.Color(0x6f9a4f);
+  return geometry;
+}
+const trunkColor = new T.Color(0x5b4632);
+function pineGeometry() {
+  // Trunk and three uneven tiers, unit height, base at 0.
+  const geometry = merge(
+    [
+      new T.CylinderGeometry(0.035, 0.05, 0.3, 5).translate(0, 0.15, 0),
+      new T.ConeGeometry(0.5, 0.42, 8).translate(0.02, 0.36, 0),
+      new T.ConeGeometry(0.38, 0.36, 8).translate(-0.02, 0.6, 0.02),
+      new T.ConeGeometry(0.24, 0.32, 7).translate(0, 0.84, -0.01),
+    ],
+    0.35,
+    1,
+  );
+  const low = new T.Color(0x23442a),
+    high = new T.Color(0x4f7d45);
   return shade(geometry, (y) =>
-    y < 0.2 ? trunk.clone() : low.clone().lerp(high, Math.min(1, (y - 0.2) / 0.8)),
+    y < 0.16
+      ? trunkColor.clone()
+      : low.clone().lerp(high, Math.min(1, (y - 0.16) / 0.84)),
   );
 }
-const hash = (n: number) => {
-  const s = Math.sin(n * 12.9898) * 43758.5453;
-  return s - Math.floor(s);
-};
+function broadleafGeometry() {
+  // Trunk and a lumpy crown of three overlapping blobs.
+  const geometry = merge(
+    [
+      new T.CylinderGeometry(0.05, 0.07, 0.4, 5).translate(0, 0.2, 0),
+      new T.IcosahedronGeometry(0.34, 0).scale(1, 0.8, 1).translate(0, 0.62, 0),
+      new T.IcosahedronGeometry(0.26, 0).translate(0.2, 0.56, 0.1),
+      new T.IcosahedronGeometry(0.24, 0).translate(-0.16, 0.72, -0.12),
+    ],
+    0.3,
+    2,
+  );
+  const low = new T.Color(0x3b5e2c),
+    high = new T.Color(0x7c9f4e);
+  return shade(geometry, (y) =>
+    y < 0.3
+      ? trunkColor.clone()
+      : low.clone().lerp(high, Math.min(1, (y - 0.3) / 0.7)),
+  );
+}
 const TREE_LIMIT = 70000;
 
 export function createFeatureLayer(
@@ -128,16 +188,30 @@ export function createFeatureLayer(
   buildings.computeBoundingSphere();
   buildings.userData.featureLayer = "structures";
 
-  // Canopy envelopes as low-poly crowns, drawn only near the view centre.
-  const crown = pineGeometry();
+  // Canopy envelopes as a thinned mix of pines and broadleaf trees, drawn
+  // only near the view centre. The envelope grid marks where canopy is, not
+  // individual trunks, so a fraction of cells get a tree.
+  const pineShape = pineGeometry(),
+    leafShape = broadleafGeometry();
   const treeMaterial = new T.MeshLambertMaterial({ vertexColors: true });
-  const trees = new T.InstancedMesh(crown, treeMaterial, TREE_LIMIT);
-  trees.count = 0;
-  trees.frustumCulled = false;
+  const pines = new T.InstancedMesh(pineShape, treeMaterial, TREE_LIMIT),
+    leaves = new T.InstancedMesh(leafShape, treeMaterial, TREE_LIMIT);
+  const trees = new T.Group();
+  for (const mesh of [pines, leaves]) {
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    trees.add(mesh);
+  }
   trees.userData.featureLayer = "trees";
-  const color = new T.Color();
+  const color = new T.Color(),
+    tilt = new T.Quaternion(),
+    axis = new T.Vector3();
   world.add(buildings, trees);
   let windowKey = "";
+  // Stand density: roughly one tree per 3–10 cells, clumped by noise.
+  const keep = (i: number, x: number, y: number) =>
+    hash(i * 1.37) <
+    0.09 + 0.34 * Math.max(0, noise(x * 1.6, y * 1.6) * 1.4 - 0.25);
 
   return {
     buildings,
@@ -148,42 +222,69 @@ export function createFeatureLayer(
       const key = `${center.x.toFixed(1)},${center.y.toFixed(1)},${r.toFixed(1)}`;
       if (key === windowKey) return;
       windowKey = key;
-      const total = f.trees.length / 4;
-      let inside = 0;
+      const total = f.trees.length / 4,
+        chosen: number[] = [];
       for (let i = 0; i < total; i++) {
         const x = f.trees[i * 4],
           y = f.trees[i * 4 + 1];
-        if (Math.abs(x - center.x) <= r && Math.abs(y - center.y) <= r)
-          inside++;
-      }
-      // Thin evenly when the window holds more crowns than the budget.
-      const stride = Math.max(1, Math.ceil(inside / TREE_LIMIT));
-      let seen = 0,
-        n = 0;
-      for (let i = 0; i < total && n < TREE_LIMIT; i++) {
-        const k = i * 4,
-          x = f.trees[k],
-          y = f.trees[k + 1];
         if (Math.abs(x - center.x) > r || Math.abs(y - center.y) > r) continue;
-        if (seen++ % stride) continue;
-        const jitter = hash(i),
-          width = cell * (0.9 + jitter * 0.5) * Math.sqrt(stride);
-        // Up to a third of a cell of jitter hides the raster rows.
-        const dx = (hash(i + 0.37) - 0.5) * 0.33 * cell,
-          dz = (hash(i + 0.71) - 0.5) * 0.33 * cell;
-        position.copy(vector({ x, y }, f.trees[k + 2] - 1));
-        position.x += dx;
-        position.z += dz;
-        scale.set(width, f.trees[k + 3] + 1, width);
-        rotation.setFromAxisAngle(up, jitter * Math.PI * 2);
-        trees.setMatrixAt(n, matrix.compose(position, rotation, scale));
-        trees.setColorAt(n, color.setHSL(0, 0, 0.85 + jitter * 0.3));
-        n++;
+        if (keep(i, x, y)) chosen.push(i);
+      }
+      // Thin evenly when the window holds more trees than the budget.
+      const stride = Math.max(1, Math.ceil(chosen.length / (TREE_LIMIT * 1.6)));
+      let pine = 0,
+        leaf = 0;
+      for (let c = 0; c < chosen.length; c += stride) {
+        const i = chosen[c],
+          k = i * 4,
+          envelope = f.trees[k + 3];
+        const h1 = hash(i + 0.37),
+          h2 = hash(i + 0.71),
+          h3 = hash(i + 0.19),
+          h4 = hash(i + 0.53);
+        const broadleaf = envelope < 14 || h4 < 0.25;
+        const mesh = broadleaf ? leaves : pines;
+        const n = broadleaf ? leaf : pine;
+        if (n >= TREE_LIMIT) continue;
+        // Envelopes are upper bounds; real crowns sit below them.
+        const height = Math.max(3, (envelope + 1) * (0.55 + 0.4 * h1));
+        const width =
+          height * (broadleaf ? 0.65 + 0.3 * h2 : 0.34 + 0.16 * h2) *
+          Math.min(1.6, Math.sqrt(stride));
+        position.copy(vector({ x: f.trees[k], y: f.trees[k + 1] }, f.trees[k + 2] - 0.5));
+        position.x += (h2 - 0.5) * cell;
+        position.z += (h3 - 0.5) * cell;
+        scale.set(width, height, width * (0.85 + 0.3 * h3));
+        // Random heading and a lean of up to ~6 degrees.
+        rotation.setFromAxisAngle(up, h1 * Math.PI * 2);
+        axis.set(Math.cos(h3 * 6.283), 0, Math.sin(h3 * 6.283));
+        tilt.setFromAxisAngle(axis, (h4 - 0.5) * 0.2);
+        rotation.premultiply(tilt);
+        mesh.setMatrixAt(n, matrix.compose(position, rotation, scale));
+        const shadeValue = 0.8 + 0.35 * h2;
+        mesh.setColorAt(
+          n,
+          color.setRGB(
+            shadeValue * (0.9 + 0.2 * h3),
+            shadeValue,
+            shadeValue * (0.85 + 0.2 * h1),
+          ),
+        );
+        if (broadleaf) leaf++;
+        else pine++;
       }
       rotation.identity();
-      trees.count = n;
-      trees.instanceMatrix.needsUpdate = true;
-      if (trees.instanceColor) trees.instanceColor.needsUpdate = true;
+      pines.count = pine;
+      leaves.count = leaf;
+      for (const m of [pines, leaves]) {
+        m.instanceMatrix.needsUpdate = true;
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      }
+    },
+    hideTrees() {
+      pines.count = 0;
+      leaves.count = 0;
+      windowKey = "";
     },
     setVisible(structures: boolean, canopy: boolean) {
       buildings.visible = structures;
@@ -192,9 +293,11 @@ export function createFeatureLayer(
     dispose() {
       world.remove(buildings, trees);
       buildings.dispose();
-      trees.dispose();
+      pines.dispose();
+      leaves.dispose();
       boxGeometry.dispose();
-      crown.dispose();
+      pineShape.dispose();
+      leafShape.dispose();
       buildingMaterial.dispose();
       treeMaterial.dispose();
     },

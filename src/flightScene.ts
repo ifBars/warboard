@@ -148,7 +148,7 @@ export function createFlightScene(
         const halfWidth =
           (camera.right - camera.left) / camera.zoom / 2;
         // Crowns only when zoomed in; the imagery already shows canopy from afar.
-        if (halfWidth > 2600) featureLayer.trees.count = 0;
+        if (halfWidth > 2600) featureLayer.hideTrees();
         else {
           const step = 0.5,
             bucket = 1.25 ** Math.ceil(Math.log(halfWidth * 1.4) / Math.log(1.25));

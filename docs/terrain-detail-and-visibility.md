@@ -8,7 +8,7 @@ The Board 3D view derives three layers from the 8 m composite surface and tree c
 
 - **Bare ground.** A morphological opening (9-cell window) of the surface reproduces planar slopes exactly and removes narrow raised features. Only cells classified as structures take the opened height; ridges and knolls keep their surface height. The result replaces the 257-sample (≈64 m) overview mesh with a 1024-sample (≈16 m) mesh.
 - **Structures and rocks.** Connected raised areas count as structures only when their edges drop like walls, losing at least 60% of their height within one cell. Smooth crests fall away over several cells and remain ground. Steep rock outcrops can still pass, so the toggle is labelled “Structures”, not “Buildings”. East-west runs of similar cells are merged into single boxes, about 98k boxes on Bakurani.
-- **Trees.** Canopy envelopes become instanced low-poly pines. They are drawn only within the camera window when zoomed in, with at most 70,000 at a time. They are conservative bounds, not individual trees.
+- **Trees.** Canopy envelope cells mark where canopy is, not individual trunks. A noise-clumped fraction of cells (roughly one in three to ten) gets a pine or broadleaf tree with varied height (55–95% of the envelope), width, lean and colour. Trees are drawn only within the camera window when zoomed in, with at most 40,000 of each type.
 
 Drawings, labels and fire-mission connectors drape on the finer ground. Fire arcs in 3D are schematic connectors, not shell trajectories.
 
