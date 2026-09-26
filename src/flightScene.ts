@@ -145,13 +145,13 @@ export function createFlightScene(
         }
       });
       if (featureLayer && featureLayer.trees.visible) {
-        const halfWidth =
-          (camera.right - camera.left) / camera.zoom / 2;
+        const halfWidth = (camera.right - camera.left) / camera.zoom / 2;
         // Crowns only when zoomed in; the imagery already shows canopy from afar.
         if (halfWidth > 2600) featureLayer.hideTrees();
         else {
           const step = 0.5,
-            bucket = 1.25 ** Math.ceil(Math.log(halfWidth * 1.4) / Math.log(1.25));
+            bucket =
+              1.25 ** Math.ceil(Math.log(halfWidth * 1.4) / Math.log(1.25));
           featureLayer.updateTrees(
             {
               x: Math.round((controls.target.x / 100 + cx) / step) * step,
@@ -514,7 +514,8 @@ export function createFlightScene(
       if (!first || !last) continue;
       if (mark.type === "note" || mark.type === "marker") {
         landmarkLabel(
-          mark.text || (mark.type === "note" ? "Note" : markerLabel(mark.symbol)),
+          mark.text ||
+            (mark.type === "note" ? "Note" : markerLabel(mark.symbol)),
           gamePoint(first),
           mark.color,
         );
@@ -702,11 +703,7 @@ export function createFlightScene(
         0xe8bb48,
       );
       next.treeDraft.forEach((p, i) =>
-        label(
-          String(i + 1),
-          vector(p, (groundAt(p) ?? 0) + 6),
-          "#94cf8b",
-        ),
+        label(String(i + 1), vector(p, (groundAt(p) ?? 0) + 6), "#94cf8b"),
       );
     }
     const path = routeAltitudes(next.flight, next.samples);

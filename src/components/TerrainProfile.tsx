@@ -97,11 +97,10 @@ export default function TerrainProfile({
             </text>
           </svg>
           <p>
-            33 ground samples, relative to the gun: the terrain datum is
-            offset, so only differences are meaningful. Buildings and vehicle
-            pose are excluded. This
-            profile is not a shell trajectory or a visibility test. MIL values
-            above remain the flat-ground estimate.
+            33 ground samples, relative to the gun: the terrain datum is offset,
+            so only differences are meaningful. Buildings and vehicle pose are
+            excluded. This profile is not a shell trajectory or a visibility
+            test. MIL values above remain the flat-ground estimate.
           </p>
         </>
       )}

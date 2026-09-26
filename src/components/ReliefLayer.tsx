@@ -15,7 +15,10 @@ const publish = (map: string, value: Relief) => {
   listeners.forEach((notify) => notify());
 };
 
-async function canvasUrl(size: number, draw: (c: CanvasRenderingContext2D) => void) {
+async function canvasUrl(
+  size: number,
+  draw: (c: CanvasRenderingContext2D) => void,
+) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const context = canvas.getContext("2d");
@@ -44,10 +47,18 @@ async function build(map: string) {
       for (let i = 0; i < segments.length; i += 5) {
         if (segments[i + 4] !== index) continue;
         // Grid values sit at cell centres.
-        path.moveTo((segments[i] + 0.5) * scale, (segments[i + 1] + 0.5) * scale);
-        path.lineTo((segments[i + 2] + 0.5) * scale, (segments[i + 3] + 0.5) * scale);
+        path.moveTo(
+          (segments[i] + 0.5) * scale,
+          (segments[i + 1] + 0.5) * scale,
+        );
+        path.lineTo(
+          (segments[i + 2] + 0.5) * scale,
+          (segments[i + 3] + 0.5) * scale,
+        );
       }
-      c.strokeStyle = index ? "rgba(92, 64, 30, 0.8)" : "rgba(110, 82, 44, 0.45)";
+      c.strokeStyle = index
+        ? "rgba(92, 64, 30, 0.8)"
+        : "rgba(110, 82, 44, 0.45)";
       c.lineWidth = index ? 1.6 : 0.8;
       c.stroke(path);
     }
@@ -84,7 +95,13 @@ export default function ReliefLayer({ map }: { map: Plan["map"] }) {
   const box = { x: tl.x, y: tl.y, width: br.x - tl.x, height: br.y - tl.y };
   return (
     <g className="relief-layer" pointerEvents="none">
-      <image href={relief.shade} {...box} preserveAspectRatio="none" style={{ mixBlendMode: "multiply" }} opacity={0.6} />
+      <image
+        href={relief.shade}
+        {...box}
+        preserveAspectRatio="none"
+        style={{ mixBlendMode: "multiply" }}
+        opacity={0.6}
+      />
       <image href={relief.lines} {...box} preserveAspectRatio="none" />
     </g>
   );

@@ -8,10 +8,12 @@ export type Sampler = (p: Point) => SurfaceSample | null;
 
 export function gridSampler(grid: ObstacleGrid): Sampler {
   return (p) => {
-    if (p.x < 0 || p.y < 0 || p.x >= grid.span || p.y >= grid.span)
-      return null;
+    if (p.x < 0 || p.y < 0 || p.x >= grid.span || p.y >= grid.span) return null;
     const col = Math.floor((p.x / grid.span) * grid.size),
-      row = Math.min(grid.size - 1, Math.floor((1 - p.y / grid.span) * grid.size));
+      row = Math.min(
+        grid.size - 1,
+        Math.floor((1 - p.y / grid.span) * grid.size),
+      );
     const i = row * grid.size + col,
       canopy = grid.canopy[i];
     return {
@@ -62,7 +64,8 @@ export function sightLine(
   const start = sample(a),
     end = sample(b);
   if (!start || !end || !Number.isFinite(distance)) return null;
-  const eye = (options.observerGround ?? start.surface) + options.observerHeight,
+  const eye =
+      (options.observerGround ?? start.surface) + options.observerHeight,
     aim = (options.targetGround ?? end.surface) + options.targetHeight;
   const skip = options.endClearance ?? END_CLEARANCE;
   const steps = Math.max(2, Math.min(4000, Math.ceil(distance / 2)));
@@ -149,7 +152,8 @@ export function coverage(
     360,
     Math.min(3600, Math.ceil((2 * Math.PI * radius) / step)),
   );
-  const eye = (options.observerGround ?? origin.surface) + options.observerHeight;
+  const eye =
+    (options.observerGround ?? origin.surface) + options.observerHeight;
   const cells = new Uint8Array(rays * steps);
   let visible = 0,
     screened = 0,

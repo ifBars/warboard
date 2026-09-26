@@ -56,7 +56,10 @@ export function featureTerrain(
 }
 
 // Vertex colours give roofs and crowns definition even with lighting off.
-function shade(geometry: T.BufferGeometry, color: (y: number, normalY: number) => T.Color) {
+function shade(
+  geometry: T.BufferGeometry,
+  color: (y: number, normalY: number) => T.Color,
+) {
   const position = geometry.getAttribute("position"),
     normal = geometry.getAttribute("normal"),
     colors = new Float32Array(position.count * 3);
@@ -249,9 +252,12 @@ export function createFeatureLayer(
         // Envelopes are upper bounds; real crowns sit below them.
         const height = Math.max(3, (envelope + 1) * (0.55 + 0.4 * h1));
         const width =
-          height * (broadleaf ? 0.65 + 0.3 * h2 : 0.34 + 0.16 * h2) *
+          height *
+          (broadleaf ? 0.65 + 0.3 * h2 : 0.34 + 0.16 * h2) *
           Math.min(1.6, Math.sqrt(stride));
-        position.copy(vector({ x: f.trees[k], y: f.trees[k + 1] }, f.trees[k + 2] - 0.5));
+        position.copy(
+          vector({ x: f.trees[k], y: f.trees[k + 1] }, f.trees[k + 2] - 0.5),
+        );
         position.x += (h2 - 0.5) * cell;
         position.z += (h3 - 0.5) * cell;
         scale.set(width, height, width * (0.85 + 0.3 * h3));

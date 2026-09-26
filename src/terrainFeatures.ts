@@ -97,7 +97,11 @@ export function structureMask(
         } else wall = Math.max(wall, surface[i] - surface[j]);
       }
     }
-    if (tail <= maxArea && top <= 120 && wall >= Math.max(minHeight, top * wallShare))
+    if (
+      tail <= maxArea &&
+      top <= 120 &&
+      wall >= Math.max(minHeight, top * wallShare)
+    )
       for (let k = 0; k < tail; k++) mask[queue[k]] = 1;
   }
   return mask;
@@ -131,7 +135,7 @@ export function extractFeatures(
   for (let row = 0; row < size; row++) {
     const y = span - (row + 0.5) * cell;
     // Merge east-west runs of similar structure cells into one box.
-    for (let col = 0; col < size; ) {
+    for (let col = 0; col < size;) {
       const i = row * size + col;
       if (!structures[i]) {
         col++;
@@ -150,7 +154,13 @@ export function extractFeatures(
           break;
         end++;
       }
-      buildings.push(((col + end) / 2) * cell, y, base, height, (end - col) * cell * 100);
+      buildings.push(
+        ((col + end) / 2) * cell,
+        y,
+        base,
+        height,
+        (end - col) * cell * 100,
+      );
       col = end;
     }
     for (let col = 0; col < size; col++) {

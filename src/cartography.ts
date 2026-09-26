@@ -1,8 +1,11 @@
 import bakurani from "./data/bakurani.json";
 import ozeti from "./data/ozeti.json";
+import zestafona from "./data/zestafona.json";
 import type { Plan, Point } from "./model";
 
-export const maps = { Bakurani: bakurani, Ozeti: ozeti };
+export const maps = { Bakurani: bakurani, Ozeti: ozeti, Zestafona: zestafona };
+/** Maps covered by the structure and tree-canopy obstacle grids. */
+export const obstacleMaps = ["Bakurani", "Ozeti"];
 export function mapData(map: Plan["map"]) {
   return map.width === 4096 &&
     map.height === 4096 &&

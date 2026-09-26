@@ -62,7 +62,12 @@ describe("Portable plan boundary", () => {
     for (const patch of [
       { symbol: "<script>" },
       { symbol: undefined },
-      { points: [{ x: 1, y: 2 }, { x: 3, y: 4 }] },
+      {
+        points: [
+          { x: 1, y: 2 },
+          { x: 3, y: 4 },
+        ],
+      },
     ]) {
       const q = structuredClone(p);
       Object.assign(q.marks[1], patch);

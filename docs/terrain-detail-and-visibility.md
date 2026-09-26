@@ -42,3 +42,7 @@ Pasting a game coordinate copy (`x12.34, y56.78`) on the Board sets the gun firs
 
 - **Relief** (Map controls → mountain icon) overlays a hillshade (sun from the north-west, 2× vertical exaggeration) and 20 m contours, with index lines every 100 m. Both are computed in the browser from the derived bare-ground grid. The idea comes from [wardogs-maps](https://github.com/MarkusAureliusMaximus/wardogs-maps) (MIT); no code was copied. Contours are unlabelled because the height datum is offset. The layer is not included in PNG exports.
 - **Zone** (G) draws a labelled polygon with its calibrated area. Click to add corners, then click the first corner, double-click or press Enter to finish.
+
+## Zestafona
+
+Zestafona has the base map, detail tiles, reference markers, 2 m terrain (fire-support profile, Flight planner) and the 3D overview mesh. The structure and tree-canopy grids cover Bakurani and Ozeti only, so Zestafona has no 3D structures or trees, relief layer, line-of-sight or coverage checks, and no colour imagery. Those controls are hidden or explain the limitation. Prepare scripts accept map ids, for example `bun scripts/prepare-terrain.ts zestafona`.

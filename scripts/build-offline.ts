@@ -12,12 +12,14 @@ const core = [
   "/icon-512.png",
   "/maps/bakurani.webp",
   "/maps/ozeti.webp",
+  "/maps/zestafona.webp",
   "/maps/community-color/bakurani.webp",
   "/maps/community-color/ozeti.webp",
   "/maps/color/bakurani.webp",
   "/maps/color/ozeti.webp",
   "/terrain/bakurani/preview.json",
   "/terrain/ozeti/preview.json",
+  "/terrain/zestafona/preview.json",
   ...assets,
 ];
 const hasher = new Bun.CryptoHasher("sha256");

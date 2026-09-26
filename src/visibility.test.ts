@@ -39,11 +39,16 @@ describe("line of sight", () => {
     expect(r.blocker!.distance).toBeLessThan(500);
   });
   test("high observers see over the wall", () => {
-    const r = sightLine(wall, { x: 45, y: 50 }, { x: 55, y: 50 }, {
-      ...options,
-      observerHeight: 80,
-      targetHeight: 0,
-    })!;
+    const r = sightLine(
+      wall,
+      { x: 45, y: 50 },
+      { x: 55, y: 50 },
+      {
+        ...options,
+        observerHeight: 80,
+        targetHeight: 0,
+      },
+    )!;
     expect(r.clear).toBe(true);
   });
   test("tree canopy only blocks when included", () => {
@@ -55,11 +60,16 @@ describe("line of sight", () => {
     );
   });
   test("finer endpoint ground overrides coarse cells", () => {
-    const r = sightLine(flat, { x: 45, y: 50 }, { x: 55, y: 50 }, {
-      ...options,
-      observerGround: 90,
-      targetGround: 110,
-    })!;
+    const r = sightLine(
+      flat,
+      { x: 45, y: 50 },
+      { x: 55, y: 50 },
+      {
+        ...options,
+        observerGround: 90,
+        targetGround: 110,
+      },
+    )!;
     expect(r.eye).toBe(92);
     expect(r.aim).toBe(112);
   });

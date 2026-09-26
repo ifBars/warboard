@@ -85,7 +85,13 @@ export async function runSight(
   });
   if (!result)
     throw Error("Part of this line is outside the terrain and obstacle data.");
-  return { kind: "sight", markId: mark.id, key: geometryKey(mark), settings, result };
+  return {
+    kind: "sight",
+    markId: mark.id,
+    key: geometryKey(mark),
+    settings,
+    result,
+  };
 }
 
 export async function runCoverage(
@@ -149,6 +155,10 @@ function coverageImage(c: Coverage, size: number) {
   canvas.width = canvas.height = size;
   const context = canvas.getContext("2d");
   if (!context) throw Error("Could not draw coverage in this browser.");
-  context.putImageData(new ImageData(coverageRaster(c, size), size, size), 0, 0);
+  context.putImageData(
+    new ImageData(coverageRaster(c, size), size, size),
+    0,
+    0,
+  );
   return canvas.toDataURL("image/png");
 }

@@ -109,8 +109,8 @@ export function validatePlan(value: unknown): Plan {
       (m.type === "polygon"
         ? m.points.length < 3 || m.points.length > 500
         : m.type === "note" || m.type === "marker"
-        ? m.points.length !== 1
-        : m.type !== "pen" && m.points.length !== 2)
+          ? m.points.length !== 1
+          : m.type !== "pen" && m.points.length !== 2)
     )
       throw new Error("The plan contains invalid annotations.");
     ids.add(m.id);

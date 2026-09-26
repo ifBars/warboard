@@ -12,7 +12,10 @@ export default function ShareInbox({
   if (inbox.state === "idle") return null;
   if (inbox.state !== "ready")
     return (
-      <div className="share-inbox" role={inbox.state === "error" ? "alert" : "status"}>
+      <div
+        className="share-inbox"
+        role={inbox.state === "error" ? "alert" : "status"}
+      >
         <Share2 size={18} />
         <span>
           {inbox.state === "loading" ? "Reading share link…" : inbox.message}
@@ -55,7 +58,10 @@ export default function ShareInbox({
             Ignore
           </button>
         </div>
-        <small>Either choice can be undone. Links only carry overlays, never your map image.</small>
+        <small>
+          Either choice can be undone. Links only carry overlays, never your map
+          image.
+        </small>
       </div>
     </section>
   );

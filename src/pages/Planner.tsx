@@ -51,7 +51,7 @@ import {
   parseCoordinates,
   type Mission,
 } from "../ballistics";
-import { mapData, toGame, toPixel } from "../cartography";
+import { mapData, obstacleMaps, toGame, toPixel } from "../cartography";
 import { visibleMap, type Camera } from "../viewport";
 import {
   useCallback,
@@ -764,8 +764,7 @@ export default function App({
       if (g.action === "note" && g.mark) {
         if (g.mark.type === "marker") placeMarker(g.mark);
         else placeNote(g.mark);
-      }
-      else if (g.action === "erase" && g.id) remove(g.id);
+      } else if (g.action === "erase" && g.id) remove(g.id);
       else if (g.action === "gun" || g.action === "target") {
         const coordinate = toGame(g.point, plan.map);
         if (
@@ -982,7 +981,7 @@ export default function App({
     const shared = sharedFrom(plan);
     if (!shared) {
       setError(
-        "Share links work for Bakurani and Ozeti. Export the editable plan to share an imported map.",
+        "Share links work for the built-in maps. Export the editable plan to share an imported map.",
       );
       return;
     }
@@ -1308,9 +1307,15 @@ export default function App({
                   </button>
                   <button
                     type="button"
-                    title="Relief: hillshade and 20 m contours"
+                    title={
+                      obstacleMaps.includes(plan.map.name)
+                        ? "Relief: hillshade and 20 m contours"
+                        : "Relief is available on Bakurani and Ozeti"
+                    }
                     aria-label="Relief shading and contours"
-                    disabled={showTerrain || !mapData(plan.map)}
+                    disabled={
+                      showTerrain || !obstacleMaps.includes(plan.map.name)
+                    }
                     aria-pressed={relief}
                     onClick={() => updateView({ relief: !relief })}
                   >
@@ -1477,7 +1482,7 @@ export default function App({
                         <span>
                           {sharedFrom(plan)
                             ? "URL · drawings, markers & fire missions"
-                            : "Bakurani and Ozeti only"}
+                            : "Built-in maps only"}
                         </span>
                       </button>
                       <OfflineStatus onError={setError} />
@@ -1598,7 +1603,7 @@ export default function App({
                       camera={camera}
                       viewport={viewport}
                     />
-                    {relief && mapData(plan.map) && (
+                    {relief && obstacleMaps.includes(plan.map.name) && (
                       <ReliefLayer map={plan.map} />
                     )}
                     {treeOutlines && <BoardTrees plan={plan} />}
@@ -1845,7 +1850,8 @@ export default function App({
                       value={active?.symbol ?? symbol}
                       onPick={(next) => {
                         setSymbol(next);
-                        if (active?.type === "marker") editMark({ symbol: next });
+                        if (active?.type === "marker")
+                          editMark({ symbol: next });
                         else {
                           setTerrainView(false);
                           setTool("marker");
@@ -1939,7 +1945,7 @@ export default function App({
                     </>
                   )}
                   {(active?.type === "ruler" || active?.type === "circle") &&
-                    mapData(plan.map) && (
+                    obstacleMaps.includes(plan.map.name) && (
                       <VisibilityCheck
                         key={active.id}
                         plan={plan}
@@ -2029,10 +2035,10 @@ export default function App({
                                   ? `${markerLabel(m.symbol)} · ${m.text}`
                                   : markerLabel(m.symbol)
                                 : m.type === "polygon" && m.text
-                                ? m.text
-                                : m.type === "note"
-                                ? m.text || "Empty note"
-                                : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : m.type === "polygon" ? "Zone" : "Line"} ${i + 1}`}
+                                  ? m.text
+                                  : m.type === "note"
+                                    ? m.text || "Empty note"
+                                    : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : m.type === "polygon" ? "Zone" : "Line"} ${i + 1}`}
                             </span>
                           </button>
                           <button
@@ -2062,7 +2068,7 @@ export default function App({
                     onChange={(e) => setBrightness(Number(e.target.value))}
                   />
                   <p>
-                    Bakurani & Ozeti terrain renders.
+                    Bakurani, Ozeti & Zestafona terrain renders.
                     <br />
                     Your drawings stay with each map.
                   </p>

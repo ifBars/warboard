@@ -14,7 +14,8 @@ export function hillshade(
     alt = (altitude * Math.PI) / 180;
   const at = (c: number, r: number) =>
     ground[
-      Math.min(size - 1, Math.max(0, r)) * size + Math.min(size - 1, Math.max(0, c))
+      Math.min(size - 1, Math.max(0, r)) * size +
+        Math.min(size - 1, Math.max(0, c))
     ];
   for (let r = 0; r < size; r++)
     for (let c = 0; c < size; c++) {
@@ -71,31 +72,51 @@ export function contours(
         level += interval
       ) {
         const index =
-          Math.round((level - Math.floor(low / interval) * interval) / interval) %
+          Math.round(
+            (level - Math.floor(low / interval) * interval) / interval,
+          ) %
             indexEvery ===
           0
             ? 1
             : 0;
         // Edge crossings: top, right, bottom, left.
         const points: number[] = [];
-        if (tl < level !== tr < level)
-          points.push(c + lerp(tl, tr, level), r);
+        if (tl < level !== tr < level) points.push(c + lerp(tl, tr, level), r);
         if (tr < level !== br < level)
           points.push(c + 1, r + lerp(tr, br, level));
         if (bl < level !== br < level)
           points.push(c + lerp(bl, br, level), r + 1);
-        if (tl < level !== bl < level)
-          points.push(c, r + lerp(tl, bl, level));
+        if (tl < level !== bl < level) points.push(c, r + lerp(tl, bl, level));
         if (points.length === 4) out.push(...points, index);
         else if (points.length === 8) {
           // Saddle: pair crossings by the cell centre value.
           const centre = (tl + tr + br + bl) / 4;
           if (centre < level === tl < level)
-            out.push(points[0], points[1], points[2], points[3], index,
-              points[4], points[5], points[6], points[7], index);
+            out.push(
+              points[0],
+              points[1],
+              points[2],
+              points[3],
+              index,
+              points[4],
+              points[5],
+              points[6],
+              points[7],
+              index,
+            );
           else
-            out.push(points[0], points[1], points[6], points[7], index,
-              points[2], points[3], points[4], points[5], index);
+            out.push(
+              points[0],
+              points[1],
+              points[6],
+              points[7],
+              index,
+              points[2],
+              points[3],
+              points[4],
+              points[5],
+              index,
+            );
         }
       }
     }

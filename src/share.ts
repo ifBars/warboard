@@ -7,7 +7,7 @@ import type { Operations } from "./operations";
 // Share links carry a plan's overlays for a built-in map in the URL fragment.
 // Fragments are never sent to a server. The map image is not included; the
 // receiver supplies its own bundled copy, and the result passes validatePlan.
-export const shareMaps = ["Bakurani", "Ozeti"] as const;
+export const shareMaps = ["Bakurani", "Ozeti", "Zestafona"] as const;
 export type SharedPlan = {
   v: 1;
   map: (typeof shareMaps)[number];
@@ -134,11 +134,7 @@ export async function encodeShare(shared: SharedPlan) {
 }
 
 export async function decodeShare(token: string): Promise<SharedPlan> {
-  if (
-    !token ||
-    token.length > MAX_TOKEN ||
-    !/^[A-Za-z0-9_-]+$/.test(token)
-  )
+  if (!token || token.length > MAX_TOKEN || !/^[A-Za-z0-9_-]+$/.test(token))
     throw new Error("This share link is damaged or too long.");
   let value: SharedPlan;
   try {
@@ -231,9 +227,10 @@ export function applyShared(
     ...plan,
     marks: [...plan.marks, ...incoming].slice(0, 2000),
     ...(mission && { mission }),
-    ...(!plan.operations && shared.operations && {
-      operations: shared.operations,
-    }),
+    ...(!plan.operations &&
+      shared.operations && {
+        operations: shared.operations,
+      }),
     ...(!plan.base && shared.base && { base: shared.base }),
   });
 }

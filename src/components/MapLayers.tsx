@@ -25,7 +25,7 @@ export default function MapLayers({
         <h2>Uncalibrated image</h2>
         <p>
           Reference layers and game-coordinate lookup are available on the
-          bundled Bakurani and Ozeti maps.
+          bundled Bakurani, Ozeti and Zestafona maps.
         </p>
       </section>
     );

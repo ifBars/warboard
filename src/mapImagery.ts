@@ -3,9 +3,11 @@ import { mapData } from "./cartography";
 import type { Plan } from "./model";
 // Community originals only. Rejected site imagery must never be selected here.
 export const terrainColorAvailable = true;
+// Community colour imagery exists for these maps only.
+const colorMaps = ["bakurani", "ozeti"];
 export function mapImage(map: Plan["map"], color: boolean) {
   const data = mapData(map);
-  return terrainColorAvailable && color && data
+  return terrainColorAvailable && color && data && colorMaps.includes(data.id)
     ? assetUrl(`/maps/community-color/${data.id}.webp`)
     : map.image;
 }
@@ -16,7 +18,7 @@ export function detailImagery(
 ) {
   const data = mapData(map);
   if (!data) return null;
-  if (terrainColorAvailable && color) {
+  if (terrainColorAvailable && color && colorMaps.includes(data.id)) {
     const maxLevel = data.id === "ozeti" ? 15 : 14;
     const scale = Number.isFinite(pixelsPerUnit)
       ? Math.max(1, pixelsPerUnit)

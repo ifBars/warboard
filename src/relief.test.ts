@@ -19,7 +19,9 @@ test("contours ring a cone at each interval, with index lines", () => {
     expect(segments[i + 4] === 0 || segments[i + 4] === 1).toBe(true);
   }
   // 100 m peak down to about -41 m in the corners.
-  expect([...levels].sort((a, b) => a - b)).toEqual([-40, -20, 0, 20, 40, 60, 80]);
+  expect([...levels].sort((a, b) => a - b)).toEqual([
+    -40, -20, 0, 20, 40, 60, 80,
+  ]);
   expect([...segments].some((v, i) => i % 5 === 4 && v === 1)).toBe(true);
 });
 

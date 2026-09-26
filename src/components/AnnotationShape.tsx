@@ -178,7 +178,8 @@ function MarkerShape({
 function areaText(mark: Mark, map?: Plan["map"]) {
   const data = map && mapData(map);
   if (!data || !map) return "";
-  const perPixel = ((data.tileBounds.maxX - data.tileBounds.minX) * 100) / map.width;
+  const perPixel =
+    ((data.tileBounds.maxX - data.tileBounds.minX) * 100) / map.width;
   const m2 = polygonArea(mark.points) * perPixel * perPixel;
   return m2 >= 100000
     ? `${(m2 / 1e6).toFixed(2)} km²`

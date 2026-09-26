@@ -1,10 +1,26 @@
 import { mkdir } from "node:fs/promises";
 const revision = "c3252c9d24a22d1aad5d3fa4408807aef591bb56";
 const base = `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${revision}/data/terrain`;
-for (const map of ["bakurani", "ozeti"]) {
+// Zestafona's manifest (with chunk SHA-256 hashes) is pinned from Apollyon's
+// git history; its chunk binaries are served from Apollyon's asset release.
+const zestafonaRevision = "d96c15ffc2c65dc31b4cceff8a9b12a7724467a6";
+const manifestUrl = (map: string) =>
+  map === "zestafona"
+    ? `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${zestafonaRevision}/data/terrain/zestafona/manifest.json`
+    : `${base}/${map}/manifest.json`;
+const chunkBase = (map: string) =>
+  map === "zestafona"
+    ? "https://assets.wardogs-artillery.com/releases/assets-v1/data/terrain/zestafona"
+    : `${base}/${map}`;
+const requested = process.argv.slice(2);
+for (const map of requested.length
+  ? requested
+  : ["bakurani", "ozeti", "zestafona"]) {
+  if (!["bakurani", "ozeti", "zestafona"].includes(map))
+    throw new Error(`Unknown map ${map}`);
   const root = `public/terrain/${map}`;
   await mkdir(`${root}/chunks`, { recursive: true });
-  const response = await fetch(`${base}/${map}/manifest.json`);
+  const response = await fetch(manifestUrl(map));
   if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
   const manifest = (await response.json()) as {
     format: string;
@@ -29,7 +45,7 @@ for (const map of ["bakurani", "ozeti"]) {
         if (await file.exists())
           bytes = new Uint8Array(await file.arrayBuffer());
         else {
-          const res = await fetch(`${base}/${map}/${chunk.file}`);
+          const res = await fetch(`${chunkBase(map)}/${chunk.file}`);
           if (!res.ok) throw new Error(`Chunk HTTP ${res.status}`);
           bytes = new Uint8Array(await res.arrayBuffer());
         }

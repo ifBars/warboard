@@ -6,7 +6,8 @@ const size = 32;
 const field = (height: (col: number, row: number) => number) => {
   const out = new Float32Array(size * size);
   for (let row = 0; row < size; row++)
-    for (let col = 0; col < size; col++) out[row * size + col] = height(col, row);
+    for (let col = 0; col < size; col++)
+      out[row * size + col] = height(col, row);
   return out;
 };
 // A 3 x 2 cell, 6 m building on a 5 % slope, and a smooth 6 m ridge.
@@ -43,7 +44,9 @@ describe("terrain features", () => {
       span: 2.56,
       scale,
       offset,
-      surface: Uint16Array.from(surface, (h) => Math.round((h - offset) / scale)),
+      surface: Uint16Array.from(surface, (h) =>
+        Math.round((h - offset) / scale),
+      ),
       canopy: field((c, r) => (c === 20 && r === 20 ? slope(20) + 18 : NaN)),
     };
     const f = extractFeatures(grid, { groundSize: 16 });

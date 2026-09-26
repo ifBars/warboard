@@ -82,14 +82,20 @@ export default function VisibilityCheck({
         {sight ? "Line of sight" : "Coverage from centre"}
       </h3>
       <div className="visibility-grid">
-        {number("observerHeight", sight ? "Observer above ground" : "Observer / sensor above ground", 300)}
+        {number(
+          "observerHeight",
+          sight ? "Observer above ground" : "Observer / sensor above ground",
+          300,
+        )}
         {number("targetHeight", "Target above ground", 500)}
         <label className="visibility-field">
           Target type
           <select
             value={preset?.label ?? "custom"}
             onChange={(e) => {
-              const next = targetPresets.find((p) => p.label === e.target.value);
+              const next = targetPresets.find(
+                (p) => p.label === e.target.value,
+              );
               if (next) setSettings({ ...settings, targetHeight: next.height });
             }}
           >
@@ -105,7 +111,9 @@ export default function VisibilityCheck({
           <input
             type="checkbox"
             checked={settings.trees}
-            onChange={(e) => setSettings({ ...settings, trees: e.target.checked })}
+            onChange={(e) =>
+              setSettings({ ...settings, trees: e.target.checked })
+            }
           />
           {sight ? "Trees block sight" : "Show tree cover separately"}
         </label>
@@ -158,16 +166,21 @@ export default function VisibilityCheck({
         </p>
       )}
       {current && (
-        <button type="button" className="text-button" onClick={() => onResult(null)}>
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => onResult(null)}
+        >
           Clear result
         </button>
       )}
       <small>
         Estimate from the 8 m structure surface and conservative tree envelopes.
         Trees within 25 m of a position count as its own cover.
-        {sight ? "" : " Raise the sensor height for rooftop, hill or vehicle positions."}{" "}
-        Windows, fences,
-        destructible objects and player bases are not modelled.
+        {sight
+          ? ""
+          : " Raise the sensor height for rooftop, hill or vehicle positions."}{" "}
+        Windows, fences, destructible objects and player bases are not modelled.
       </small>
     </section>
   );

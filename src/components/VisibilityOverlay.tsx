@@ -36,7 +36,8 @@ export default function VisibilityOverlay({
     );
   }
   if (layer !== "over") return null;
-  const blocker = analysis.result.blocker && toPixel(analysis.result.blocker.point, map);
+  const blocker =
+    analysis.result.blocker && toPixel(analysis.result.blocker.point, map);
   const width = 4 * unit,
     size = 9 * unit;
   return (

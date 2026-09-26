@@ -1,5 +1,6 @@
 import { readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { encodeTerrainChunk } from "../src/compressedData";
 async function files(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   return (
@@ -12,9 +13,16 @@ async function files(dir: string): Promise<string[]> {
 }
 for (const path of await files("dist/terrain")) {
   if (!path.endsWith(".bin")) continue;
+  // Delta byte planes, then gzip; the browser reverses both (see terrain.ts).
   await Bun.write(
-    `${path}.gz`,
-    Bun.gzipSync(await Bun.file(path).arrayBuffer()),
+    `${path}.dgz`,
+    Bun.gzipSync(
+      encodeTerrainChunk(
+        new Uint8Array(await Bun.file(path).arrayBuffer()),
+        511,
+      ),
+      { level: 9 },
+    ),
   );
   await unlink(path);
 }

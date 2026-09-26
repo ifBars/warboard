@@ -4,6 +4,7 @@ import { validatePlan, type Plan } from "./model";
 export const builtIns = [
   { id: "bakurani", name: "Bakurani" },
   { id: "ozeti", name: "Ozeti" },
+  { id: "zestafona", name: "Zestafona" },
 ] as const;
 export async function openMap(id: string): Promise<Plan> {
   const entry = builtIns.find((m) => m.id === id);

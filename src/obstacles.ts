@@ -40,7 +40,9 @@ export function loadObstacles(map: string): Promise<ObstacleGrid> {
   const key = map.toLowerCase();
   if (key !== "bakurani" && key !== "ozeti")
     return Promise.reject(
-      Error("Obstacle data is available for built-in maps only."),
+      Error(
+        "Structure and tree data covers Bakurani and Ozeti only. Zestafona has terrain height only.",
+      ),
     );
   let job = cache.get(key);
   if (job) return job;
