@@ -1,3 +1,17 @@
+import { markerLabel } from "./markers";
+import {
+  createFeatureLayer,
+  featureGround,
+  featureTerrain,
+} from "./featureLayer";
+import type { TerrainFeatures } from "./terrainFeatures";
+import {
+  firingSolution,
+  formatMil,
+  profiles,
+  rangeBearing,
+  type Mission,
+} from "./ballistics";
 import { factionIcon, factionIcons } from "./factionIcons";
 import { createClickGesture } from "./clickGesture";
 import { createTerrainDetail } from "./terrainDetail";
@@ -35,6 +49,11 @@ export type SceneState = {
   focus: Point | null;
   mode: "2d" | "3d";
   exaggeration: number;
+  /** Derived structures, canopy and finer ground; null keeps the overview mesh. */
+  features?: TerrainFeatures | null;
+  mission?: Mission;
+  structures?: boolean;
+  canopy?: boolean;
   onAdd: (point: Point) => void;
   onSelect: (index: number) => void;
 };
@@ -78,6 +97,10 @@ export function createFlightScene(
     centerHeight = gridHeight(grid, { x: cx, y: cy }) ?? 0;
   const vector = (p: Point, height: number) =>
     new T.Vector3((p.x - cx) * 100, height, -(p.y - cy) * 100);
+  let features: TerrainFeatures | null = null;
+  let featureLayer: ReturnType<typeof createFeatureLayer> | null = null;
+  const groundAt = (p: Point) =>
+    (features && featureGround(features, p)) ?? gridHeight(grid, p);
   const geometry = new T.PlaneGeometry(
     width,
     depth,
@@ -121,6 +144,23 @@ export function createFlightScene(
           );
         }
       });
+      if (featureLayer && featureLayer.trees.visible) {
+        const halfWidth = (camera.right - camera.left) / camera.zoom / 2;
+        // Crowns only when zoomed in; the imagery already shows canopy from afar.
+        if (halfWidth > 2600) featureLayer.hideTrees();
+        else {
+          const step = 0.5,
+            bucket =
+              1.25 ** Math.ceil(Math.log(halfWidth * 1.4) / Math.log(1.25));
+          featureLayer.updateTrees(
+            {
+              x: Math.round((controls.target.x / 100 + cx) / step) * step,
+              y: Math.round((cy - controls.target.z / 100) / step) * step,
+            },
+            bucket,
+          );
+        }
+      }
       renderer.render(scene, camera);
       detail?.update(
         currentImage,
@@ -245,7 +285,7 @@ export function createFlightScene(
     color: string,
     tower: "detail" | "cluster" | null = null,
   ) {
-    const height = gridHeight(grid, p);
+    const height = groundAt(p);
     if (height === null) return;
     const canvas = document.createElement("canvas");
     const faction = factionImages.get(factionIcon(text) ?? "");
@@ -325,6 +365,43 @@ export function createFlightScene(
     sprite.renderOrder = 1;
     overlay.add(sprite);
   }
+  // Schematic gun-to-target connectors; the arc height is not a trajectory.
+  function missionArcs(mission: Mission | undefined) {
+    const gun = mission?.gun;
+    if (!mission || !gun) return;
+    const gunGround = groundAt(gun);
+    if (gunGround === null) return;
+    const weapon = profiles.find((w) => w.id === mission.weapon);
+    landmarkLabel(`${weapon?.name ?? "Gun"} position`, gun, "#e8bb48");
+    const targets = [
+      ...(mission.target ? [{ name: "Target", point: mission.target }] : []),
+      ...mission.targets,
+    ].slice(0, 24);
+    for (const target of targets) {
+      const ground = groundAt(target.point);
+      if (ground === null) continue;
+      const { meters, bearing } = rangeBearing(gun, target.point);
+      const solutions = firingSolution(mission.weapon, meters);
+      const apex = Math.max(40, meters * 0.22);
+      const points = Array.from({ length: 49 }, (_, i) => {
+        const t = i / 48;
+        return vector(
+          {
+            x: gun.x + (target.point.x - gun.x) * t,
+            y: gun.y + (target.point.y - gun.y) * t,
+          },
+          gunGround + (ground - gunGround) * t + 3 + 4 * apex * t * (1 - t),
+        );
+      });
+      const color = solutions.length ? "#e8bb48" : "#ed796a";
+      line(points, new T.Color(color).getHex(), true);
+      landmarkLabel(
+        `${target.name} · ${Math.round(meters)} m · ${bearing?.toFixed(1) ?? "—"}° · ${solutions.length ? `${solutions.map((s) => formatMil(s.mil)).join(" / ")} MIL` : "out of range"}`,
+        target.point,
+        color,
+      );
+    }
+  }
   function reset() {
     controls.target.set(0, centerHeight * factor, 0);
     camera.zoom = 1;
@@ -338,8 +415,23 @@ export function createFlightScene(
     controls.update();
     render();
   }
+  function applyFeatures(next: TerrainFeatures | null) {
+    if (next === features) return;
+    featureLayer?.dispose();
+    featureLayer = null;
+    if (terrain.geometry !== geometry) terrain.geometry.dispose();
+    features = next;
+    terrain.geometry = next
+      ? featureTerrain(next, { x: cx, y: cy }, bounds)
+      : geometry;
+    if (next) featureLayer = createFeatureLayer(world, vector, next);
+    // Cover meshes follow the terrain geometry; force a rebuild.
+    lastCover = null;
+  }
   function update(next: SceneState) {
     state = next;
+    applyFeatures(next.features ?? null);
+    featureLayer?.setVisible(next.structures ?? true, next.canopy ?? true);
     sky.intensity = next.terrainLighting ? 1.1 : 0;
     sun.intensity = next.terrainLighting ? 2.1 : 0;
     flatLight.intensity = next.terrainLighting ? 0 : Math.PI;
@@ -385,7 +477,7 @@ export function createFlightScene(
       lastCover = next.coverVisual;
       lastCanopy = next.flight.autoTrees?.height ?? 0;
       if (lastCover) {
-        const meshGeometry = geometry.clone(),
+        const meshGeometry = terrain.geometry.clone(),
           vertices = meshGeometry.getAttribute("position");
         for (let i = 0; i < vertices.count; i++)
           vertices.setY(i, vertices.getY(i) + lastCanopy + 3);
@@ -420,8 +512,13 @@ export function createFlightScene(
       const first = mark.points[0],
         last = mark.points.at(-1);
       if (!first || !last) continue;
-      if (mark.type === "note") {
-        landmarkLabel(mark.text || "Note", gamePoint(first), mark.color);
+      if (mark.type === "note" || mark.type === "marker") {
+        landmarkLabel(
+          mark.text ||
+            (mark.type === "note" ? "Note" : markerLabel(mark.symbol)),
+          gamePoint(first),
+          mark.color,
+        );
         continue;
       }
       const radius = Math.hypot(last.x - first.x, last.y - first.y);
@@ -431,7 +528,9 @@ export function createFlightScene(
               x: first.x + Math.cos((i / 96) * Math.PI * 2) * radius,
               y: first.y + Math.sin((i / 96) * Math.PI * 2) * radius,
             }))
-          : mark.points;
+          : mark.type === "polygon"
+            ? [...mark.points, first]
+            : mark.points;
       const drape = (pixels: Point[]) => {
         const vertices: T.Vector3[] = [];
         for (let i = 1; i < pixels.length; i++) {
@@ -449,7 +548,7 @@ export function createFlightScene(
                 x: a.x + ((b.x - a.x) * j) / steps,
                 y: a.y + ((b.y - a.y) * j) / steps,
               },
-              h = gridHeight(grid, p);
+              h = groundAt(p);
             if (h !== null) vertices.push(vector(p, h + 8));
           }
         }
@@ -473,6 +572,7 @@ export function createFlightScene(
         ]);
       }
     }
+    missionArcs(next.mission);
     factor = next.exaggeration;
     world.scale.y = factor;
     if (mode !== next.mode) {
@@ -500,7 +600,7 @@ export function createFlightScene(
                 x: a.x + ((b.x - a.x) * j) / steps,
                 y: a.y + ((b.y - a.y) * j) / steps,
               },
-              h = gridHeight(grid, p);
+              h = groundAt(p);
             if (h !== null) edge.push(vector(p, h + 6));
           }
         }
@@ -508,7 +608,7 @@ export function createFlightScene(
         const outline = vertices.map((p) => new T.Vector2(p.x, p.y));
         const faces = T.ShapeUtils.triangulateShape(outline, []).flat();
         const fillGeometry = new T.BufferGeometry().setFromPoints(
-          vertices.map((p) => vector(p, (gridHeight(grid, p) ?? 0) + 4)),
+          vertices.map((p) => vector(p, (groundAt(p) ?? 0) + 4)),
         );
         fillGeometry.setIndex(faces);
         const fill = new T.Mesh(
@@ -561,7 +661,7 @@ export function createFlightScene(
           y: tower.y / 100 + Math.sin((i / 64) * Math.PI * 2) * radius,
         }));
         line(
-          ring.map((p) => vector(p, (gridHeight(grid, p) ?? 0) + 8)),
+          ring.map((p) => vector(p, (groundAt(p) ?? 0) + 8)),
           0xeb796a,
           true,
         );
@@ -570,7 +670,7 @@ export function createFlightScene(
       if (area.kind === "clearing") {
         line(
           routeLocations([...area.points, area.points[0]]).map((p) =>
-            vector(p, (gridHeight(grid, p) ?? 0) + 8),
+            vector(p, (groundAt(p) ?? 0) + 8),
           ),
           0xa6dce5,
           true,
@@ -579,19 +679,19 @@ export function createFlightScene(
       }
       const edge = routeLocations([...area.points, area.points[0]]);
       line(
-        edge.map((p) => vector(p, (gridHeight(grid, p) ?? 0) + area.height)),
+        edge.map((p) => vector(p, (groundAt(p) ?? 0) + area.height)),
         0x94cf8b,
       );
       line(
-        edge.map((p) => vector(p, (gridHeight(grid, p) ?? 0) + 3)),
+        edge.map((p) => vector(p, (groundAt(p) ?? 0) + 3)),
         0x94cf8b,
         true,
       );
       for (const p of area.points)
         line(
           [
-            vector(p, (gridHeight(grid, p) ?? 0) + 3),
-            vector(p, (gridHeight(grid, p) ?? 0) + area.height),
+            vector(p, (groundAt(p) ?? 0) + 3),
+            vector(p, (groundAt(p) ?? 0) + area.height),
           ],
           0x94cf8b,
           true,
@@ -599,15 +699,11 @@ export function createFlightScene(
     }
     if (next.treeDraft.length) {
       line(
-        next.treeDraft.map((p) => vector(p, (gridHeight(grid, p) ?? 0) + 6)),
+        next.treeDraft.map((p) => vector(p, (groundAt(p) ?? 0) + 6)),
         0xe8bb48,
       );
       next.treeDraft.forEach((p, i) =>
-        label(
-          String(i + 1),
-          vector(p, (gridHeight(grid, p) ?? 0) + 6),
-          "#94cf8b",
-        ),
+        label(String(i + 1), vector(p, (groundAt(p) ?? 0) + 6), "#94cf8b"),
       );
     }
     const path = routeAltitudes(next.flight, next.samples);
@@ -643,7 +739,7 @@ export function createFlightScene(
       const sample = next.samples.find(
         (s) => (s.leg === i && s.t === 0) || (s.leg === i - 1 && s.t === 1),
       );
-      const ground = sample?.ground ?? gridHeight(grid, p);
+      const ground = sample?.ground ?? groundAt(p);
       if (ground === null) return;
       const altitude = p.altitude + (next.flight.mode === "agl" ? ground : 0);
       line([vector(p, ground + 3), vector(p, altitude)], 0x88999e, true);
@@ -664,17 +760,17 @@ export function createFlightScene(
           { x: p.x - r, y: p.y - r },
         ];
       line(
-        corners.map((c) => vector(c, (gridHeight(grid, c) ?? 0) + 8)),
+        corners.map((c) => vector(c, (groundAt(c) ?? 0) + 8)),
         0xa6cfa5,
       );
-      const h = gridHeight(grid, p);
+      const h = groundAt(p);
       if (h !== null)
         label(String.fromCharCode(65 + i), vector(p, h + 8), "#a6cfa5");
     });
     if (next.focus) {
       const h =
         path.find((s) => s.x === next.focus?.x && s.y === next.focus?.y)
-          ?.altitude ?? gridHeight(grid, next.focus);
+          ?.altitude ?? groundAt(next.focus);
       if (h !== null) {
         const dot = new T.Mesh(
           new T.SphereGeometry(35, 12, 8),
@@ -764,7 +860,7 @@ export function createFlightScene(
   renderer.domElement.addEventListener("dblclick", add);
   renderer.domElement.addEventListener("click", select);
   function focus(p: Point) {
-    const target = vector(p, (gridHeight(grid, p) ?? 0) * factor),
+    const target = vector(p, (groundAt(p) ?? 0) * factor),
       delta = target.clone().sub(controls.target);
     camera.position.add(delta);
     controls.target.copy(target);
@@ -790,6 +886,8 @@ export function createFlightScene(
       renderer.domElement.removeEventListener("dblclick", add);
       renderer.domElement.removeEventListener("click", select);
       releaseOverlay();
+      featureLayer?.dispose();
+      if (terrain.geometry !== geometry) terrain.geometry.dispose();
       geometry.dispose();
       detail?.dispose();
       material.dispose();

@@ -6,6 +6,7 @@ export type ViewPreferences = {
   treeOutlines: boolean;
   grid: boolean;
   rings: boolean;
+  relief: boolean;
   layers: LayerSettings;
 };
 const defaults: ViewPreferences = {
@@ -15,6 +16,7 @@ const defaults: ViewPreferences = {
   treeOutlines: false,
   grid: false,
   rings: true,
+  relief: false,
   layers: { towers: true, spawns: false, vendors: false },
 };
 export function readView(): ViewPreferences {
@@ -36,6 +38,7 @@ export function readView(): ViewPreferences {
             : defaults.brightness,
       grid: typeof p.grid === "boolean" ? p.grid : defaults.grid,
       rings: typeof p.rings === "boolean" ? p.rings : defaults.rings,
+      relief: p.relief === true,
       layers: {
         towers: typeof p.layers?.towers === "boolean" ? p.layers.towers : true,
         spawns: typeof p.layers?.spawns === "boolean" ? p.layers.spawns : false,

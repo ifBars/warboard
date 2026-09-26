@@ -2,7 +2,15 @@ import { mkdir } from "node:fs/promises";
 import sharp from "sharp";
 const revision = "c3252c9d24a22d1aad5d3fa4408807aef591bb56";
 const base = `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${revision}/maps/tiles`;
-for (const map of ["bakurani", "ozeti"]) {
+// Zestafona tiles come from Apollyon's public asset release (not in git).
+const tileBase = (map: string) =>
+  map === "zestafona"
+    ? "https://assets.wardogs-artillery.com/releases/assets-v1/maps/tiles"
+    : base;
+const requested = process.argv.slice(2);
+for (const map of requested.length
+  ? requested
+  : ["bakurani", "ozeti", "zestafona"]) {
   const root = `public/maps/detail/${map}`;
   await mkdir(root, { recursive: true });
   const jobs = Array.from({ length: 1024 }, (_, n) => ({
@@ -16,7 +24,9 @@ for (const map of ["bakurani", "ozeti"]) {
         const { x, y } = jobs.pop()!;
         const file = Bun.file(`${root}/${x}_${y}.webp`);
         if (!(await file.exists())) {
-          const response = await fetch(`${base}/${map}/zoom_5/${x}_${y}.webp`);
+          const response = await fetch(
+            `${tileBase(map)}/${map}/zoom_5/${x}_${y}.webp`,
+          );
           if (!response.ok)
             throw new Error(`Detail tile HTTP ${response.status}`);
           const bytes = await response.arrayBuffer();

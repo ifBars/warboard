@@ -1,6 +1,7 @@
 import type { Mission } from "./ballistics";
 import { validBase, type BasePlan } from "./base";
 import { isFlight, type Flight } from "./flight";
+import { isMarkerSymbol, type MarkerSymbol } from "./markers";
 import { resourceNames, type Operations } from "./operations";
 export type Point = { x: number; y: number };
 export type Tool =
@@ -12,14 +13,26 @@ export type Tool =
   | "note"
   | "erase"
   | "ruler"
-  | "circle";
+  | "circle"
+  | "marker"
+  | "polygon";
 export type Mark = {
   id: string;
-  type: "pen" | "line" | "arrow" | "note" | "ruler" | "circle";
+  type:
+    | "pen"
+    | "line"
+    | "arrow"
+    | "note"
+    | "ruler"
+    | "circle"
+    | "marker"
+    | "polygon";
   color: string;
   width: number;
   points: Point[];
   text: string;
+  /** Present only on markers. */
+  symbol?: MarkerSymbol;
 };
 export type Plan = {
   version: 1;
@@ -70,7 +83,19 @@ export function validatePlan(value: unknown): Plan {
       typeof m.id !== "string" ||
       !/^[\w-]{1,80}$/.test(m.id) ||
       ids.has(m.id) ||
-      !["pen", "line", "arrow", "note", "ruler", "circle"].includes(m.type) ||
+      ![
+        "pen",
+        "line",
+        "arrow",
+        "note",
+        "ruler",
+        "circle",
+        "marker",
+        "polygon",
+      ].includes(m.type) ||
+      (m.type === "marker"
+        ? !isMarkerSymbol(m.symbol)
+        : m.symbol !== undefined) ||
       !/^#[0-9a-f]{6}$/i.test(m.color) ||
       !Number.isFinite(m.width) ||
       m.width < 1 ||
@@ -81,9 +106,11 @@ export function validatePlan(value: unknown): Plan {
       m.points.length < 1 ||
       m.points.length > 20000 ||
       !m.points.every(point) ||
-      (m.type === "note"
-        ? m.points.length !== 1
-        : m.type !== "pen" && m.points.length !== 2)
+      (m.type === "polygon"
+        ? m.points.length < 3 || m.points.length > 500
+        : m.type === "note" || m.type === "marker"
+          ? m.points.length !== 1
+          : m.type !== "pen" && m.points.length !== 2)
     )
       throw new Error("The plan contains invalid annotations.");
     ids.add(m.id);
@@ -169,3 +196,13 @@ export const moveMark = (m: Mark, delta: Point): Mark => ({
   ...m,
   points: m.points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y })),
 });
+/** Shoelace area in square map pixels. */
+export function polygonArea(points: Point[]) {
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i],
+      b = points[(i + 1) % points.length];
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}

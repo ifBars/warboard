@@ -1,4 +1,4 @@
-import { decodeGzipFile } from "./compressedData";
+import { decodeGzipFile, decodeTerrainChunk } from "./compressedData";
 import { assetUrl } from "./assetUrl";
 import type { Point } from "./model";
 export type TerrainManifest = {
@@ -81,7 +81,7 @@ export function decodeHeight(
   return top + (bottom - top) * (y - y0);
 }
 async function manifestFor(map: string) {
-  if (!["bakurani", "ozeti"].includes(map))
+  if (!["bakurani", "ozeti", "zestafona"].includes(map))
     throw new Error("Terrain is available for built-in maps only.");
   let promise = manifests.get(map);
   if (!promise) {
@@ -121,7 +121,7 @@ async function heightAt(map: string, m: TerrainManifest, p: Point) {
     job = (async () => {
       const r = await fetch(
         assetUrl(
-          `/terrain/${key}${import.meta.env.VITE_COMPRESSED_TERRAIN === "true" ? ".gz" : ""}`,
+          `/terrain/${key}${import.meta.env.VITE_COMPRESSED_TERRAIN === "true" ? ".dgz" : ""}`,
         ),
       );
       if (!r.ok)
@@ -130,7 +130,10 @@ async function heightAt(map: string, m: TerrainManifest, p: Point) {
         );
       const bytes =
         import.meta.env.VITE_COMPRESSED_TERRAIN === "true"
-          ? await decodeGzipFile(await r.arrayBuffer())
+          ? decodeTerrainChunk(
+              await decodeGzipFile(await r.arrayBuffer()),
+              m.verticesPerSide,
+            )
           : await r.arrayBuffer();
       if (bytes.byteLength !== entry.bytes)
         throw new Error("Terrain file size mismatch.");

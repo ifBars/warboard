@@ -6,6 +6,7 @@ import {
   rangeBearing,
 } from "./ballistics";
 import { toGame } from "./cartography";
+import { markerLabel } from "./markers";
 import type { Plan } from "./model";
 import { resourceNames } from "./operations";
 
@@ -53,6 +54,17 @@ export function planBriefing(plan: Plan) {
       ...notes.map((mark) => {
         const point = toGame(mark.points[0], plan.map);
         return `- ${mark.text || "Untitled note"}${point ? ` — ${coordinateText(point)}` : ""}`;
+      }),
+      "",
+    );
+  }
+  const markers = plan.marks.filter((mark) => mark.type === "marker");
+  if (markers.length) {
+    lines.push(
+      "MAP MARKERS",
+      ...markers.map((mark) => {
+        const point = toGame(mark.points[0], plan.map);
+        return `- ${markerLabel(mark.symbol)}${mark.text ? `: ${mark.text}` : ""}${point ? ` — ${coordinateText(point)}` : ""}`;
       }),
       "",
     );

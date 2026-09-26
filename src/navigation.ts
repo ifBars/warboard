@@ -12,7 +12,8 @@ export const pageNames: Record<Page, string> = {
 };
 
 export function pageFromHash(hash: string): Page {
-  switch (hash) {
+  // Share links append a query to the route: #/board?share=…
+  switch (hash.split("?")[0]) {
     case "#/base":
       return "base";
     case "#/flight":

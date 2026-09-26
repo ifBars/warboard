@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Mountain } from "lucide-react";
 import { terrainProfile } from "../terrain";
 import type { Point } from "../model";
+const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(0)}`;
 export default function TerrainProfile({
   map,
   gun,
@@ -59,10 +60,12 @@ export default function TerrainProfile({
         <>
           <div className="terrain-summary">
             <span>
-              Gun <strong>{heights[0].toFixed(0)} m</strong>
+              Highest ground{" "}
+              <strong>{signed(Math.max(...heights) - heights[0])} m</strong>
             </span>
             <span>
-              Target <strong>{heights[32].toFixed(0)} m</strong>
+              Lowest ground{" "}
+              <strong>{signed(Math.min(...heights) - heights[0])} m</strong>
             </span>
             <span>
               Δ height{" "}
@@ -75,7 +78,7 @@ export default function TerrainProfile({
           <svg
             viewBox="0 0 270 130"
             role="img"
-            aria-label={`Terrain profile: gun ${heights[0].toFixed(0)} meters, target ${heights[32].toFixed(0)} meters. This is ground elevation, not a shell trajectory.`}
+            aria-label={`Terrain profile: target ground ${signed(heights[32] - heights[0])} meters relative to the gun. This is ground elevation, not a shell trajectory.`}
           >
             <path
               d={`${path} L270,110 L0,110 Z`}
@@ -90,13 +93,14 @@ export default function TerrainProfile({
               Target · {Math.round(distance)} m
             </text>
             <text x="0" y="12" fill="#b9c1b5" fontSize="10">
-              {max.toFixed(0)} m
+              {signed(max - 5 - heights[0])} m vs gun
             </text>
           </svg>
           <p>
-            33 ground samples. Buildings and vehicle pose are excluded. This
-            profile is not a shell trajectory or a visibility test. MIL values
-            above remain the flat-ground estimate.
+            33 ground samples, relative to the gun: the terrain datum is offset,
+            so only differences are meaningful. Buildings and vehicle pose are
+            excluded. This profile is not a shell trajectory or a visibility
+            test. MIL values above remain the flat-ground estimate.
           </p>
         </>
       )}

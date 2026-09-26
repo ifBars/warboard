@@ -1087,3 +1087,197 @@ summary:focus-visible {
   .app .map-options-popup button span { display:none; }
   .app .map-options-popup button::after { content:attr(aria-label); }
 }
+
+/* Tactical markers */
+.marker-symbols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+.marker-symbols button {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  padding: 0;
+  background: #262d30;
+  border: 1px solid #455257;
+  color: #dfe6e2;
+}
+.marker-symbols button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #191e20;
+}
+.properties input#marker-text {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* Line of sight and coverage */
+.visibility-check {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.visibility-check h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.visibility-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
+.visibility-field {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.visibility-field span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.visibility-field input,
+.visibility-field select {
+  width: 100%;
+  min-width: 0;
+}
+.visibility-field:nth-child(3) {
+  grid-column: 1 / -1;
+}
+.visibility-toggle {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 12px;
+}
+.visibility-check > button:not(.text-button) {
+  width: 100%;
+}
+.visibility-result {
+  margin: 10px 0 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.visibility-result.clear {
+  color: #8fd48a;
+}
+.visibility-result.blocked {
+  color: #f09a8e;
+}
+.visibility-legend {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.visibility-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.visibility-legend .seen {
+  background: #8fd48a;
+}
+.visibility-legend .hidden {
+  background: #101416;
+  border: 1px solid #455257;
+}
+.visibility-check small {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.sight-profile {
+  width: 100%;
+  display: block;
+  margin: 4px 0;
+}
+.text-button {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Share links and notices */
+.error.notice {
+  background: #233238;
+  border-color: #4d6b73;
+}
+.share-inbox {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: #262d30;
+  border: 1px solid #4d6b73;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px #0008;
+  z-index: 35;
+  font-size: 12px;
+}
+.share-inbox > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.share-inbox > div {
+  flex: 1;
+  min-width: 0;
+}
+.share-inbox h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.share-inbox p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+.share-inbox small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.visibility-legend .screened {
+  background: #e2c45c;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

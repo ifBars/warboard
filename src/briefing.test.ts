@@ -32,3 +32,29 @@ test("portable briefing keeps coordinates, checks and resource shortfalls togeth
   expect(text).toContain("700 packed / 1000 requested; 300 short");
   expect(text).toContain("Temporary spotter corrections are not included");
 });
+
+test("briefing lists tactical markers with coordinates", () => {
+  const text = planBriefing({
+    version: 1,
+    name: "Markers",
+    map: {
+      name: "Bakurani",
+      width: 4096,
+      height: 4096,
+      image: "data:image/webp;base64,AAAA",
+    },
+    marks: [
+      {
+        id: "m1",
+        type: "marker",
+        color: "#ed796a",
+        width: 5,
+        points: [{ x: 2048, y: 2048 }],
+        text: "Enemy AA",
+        symbol: "antiair",
+      },
+    ],
+  });
+  expect(text).toContain("MAP MARKERS");
+  expect(text).toMatch(/- Anti-air: Enemy AA — X 81\.\d\d, Y 81\.\d\d/);
+});

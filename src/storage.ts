@@ -18,7 +18,7 @@ export const readPlan = async () => {
   return p ? validatePlan(p) : null;
 };
 export function savePlan(plan: Plan) {
-  const key = ["Bakurani", "Ozeti"].includes(plan.map.name)
+  const key = ["Bakurani", "Ozeti", "Zestafona"].includes(plan.map.name)
     ? `fieldboard-map-${plan.map.name}`
     : KEY;
   return writes.save(key, plan);

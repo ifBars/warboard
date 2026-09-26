@@ -97,7 +97,7 @@ export default function FlightPlanner({
       {!supported ? (
         <TerrainLoading
           mapName={plan.map.name}
-          error="Choose Bakurani or Ozeti on Board to explore terrain."
+          error="Choose a built-in map on Board to explore terrain."
           backToBoard
         />
       ) : grid ? (

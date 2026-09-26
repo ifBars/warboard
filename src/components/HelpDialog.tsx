@@ -30,8 +30,8 @@ export default function HelpDialog({
         </button>
       </div>
       <p>
-        Choose Bakurani or Ozeti, or import your own map screenshot. Draw
-        directly on the canvas, then export your plan.
+        Choose Bakurani, Ozeti or Zestafona, or import your own map screenshot.
+        Draw directly on the canvas, then export your plan.
       </p>
       <dl>
         {shortcuts.map((t) => (

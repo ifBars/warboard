@@ -36,8 +36,22 @@ import { createCursorStore } from "../cursor";
 import { planBriefing } from "../briefing";
 import { readView, saveView, type ViewPreferences } from "../preferences";
 import { listPlans, type SavedPlan } from "../library";
-import { emptyMission, coordinateText, type Mission } from "../ballistics";
-import { mapData, toGame, toPixel } from "../cartography";
+import { markerLabel, type MarkerSymbol } from "../markers";
+import MarkerPicker from "../components/MarkerPicker";
+import { markerIcons } from "../components/markerIcons";
+import VisibilityCheck from "../components/VisibilityCheck";
+import VisibilityOverlay from "../components/VisibilityOverlay";
+import ReliefLayer from "../components/ReliefLayer";
+import ShareInbox from "../components/ShareInbox";
+import { applyShared, encodeShare, shareLink, sharedFrom } from "../share";
+import type { Analysis } from "../visibilityAnalysis";
+import {
+  emptyMission,
+  coordinateText,
+  parseCoordinates,
+  type Mission,
+} from "../ballistics";
+import { mapData, obstacleMaps, toGame, toPixel } from "../cartography";
 import { visibleMap, type Camera } from "../viewport";
 import {
   useCallback,
@@ -47,6 +61,7 @@ import {
   useState,
   type PointerEvent,
   type KeyboardEvent,
+  type ClipboardEvent,
 } from "react";
 import {
   ArrowUpRight,
@@ -77,6 +92,9 @@ import {
   Grid2X2,
   Crosshair,
   SlidersHorizontal,
+  MapPin,
+  Pentagon,
+  Mountain,
 } from "lucide-react";
 import {
   colors,
@@ -97,8 +115,10 @@ const tools = [
   { id: "line", label: "Line", key: "L", icon: Minus },
   { id: "arrow", label: "Arrow", key: "A", icon: ArrowUpRight },
   { id: "note", label: "Note", key: "N", icon: StickyNote },
+  { id: "marker", label: "Marker", key: "M", icon: MapPin },
   { id: "ruler", label: "Measure", key: "R", icon: Ruler },
   { id: "circle", label: "Area", key: "C", icon: Circle },
+  { id: "polygon", label: "Zone", key: "G", icon: Pentagon },
   { id: "erase", label: "Erase", key: "E", icon: Eraser },
 ] as const;
 const hints: Record<Tool, string> = {
@@ -109,8 +129,12 @@ const hints: Record<Tool, string> = {
   arrow: "Drag in the direction of travel.",
   note: "Click the map to place a note.",
   erase: "Click an annotation to erase it.",
-  ruler: "Drag to measure distance and bearing. Imported maps use pixels.",
-  circle: "Drag from the center to mark an area.",
+  marker: "Click the map to place the chosen tactical marker.",
+  ruler:
+    "Drag to measure distance and bearing. Select a measurement to check line of sight.",
+  circle: "Drag from the center to mark an area. Select it to check coverage.",
+  polygon:
+    "Click to add corners. Click the first corner, double-click or press Enter to finish; Backspace removes a corner.",
 };
 type Gesture =
   | { kind: "draw"; mark: Mark }
@@ -170,6 +194,7 @@ export default function App({
     layers,
     grid,
     rings,
+    relief,
     terrainColor,
     terrainLighting,
     treeOutlines,
@@ -211,11 +236,15 @@ export default function App({
     return () => observer.disconnect();
   }, []);
   const [notePreset, setNotePreset] = useState("New note");
+  const [symbol, setSymbol] = useState<MarkerSymbol>("infantry");
+  const [polyHover, setPolyHover] = useState<Point | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [panel, setPanel] = useState(true),
     [drawings, setDrawings] = useState(true);
   const [history, setHistory] = useState<Plan[]>([]),
     [future, setFuture] = useState<Plan[]>([]);
   const [error, setError] = useState(warning),
+    [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [menu, setMenu] = useState(false),
     [help, setHelp] = useState(false);
@@ -229,8 +258,12 @@ export default function App({
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const active = plan.marks.find((m) => m.id === selected);
   const overlayUnit = visibleMap(camera, viewport).unit;
-  const shown = draft
-    ? [...plan.marks.filter((m) => m.id !== draft.id), draft]
+  const draftShown =
+    draft?.type === "polygon" && polyHover
+      ? { ...draft, points: [...draft.points, polyHover] }
+      : draft;
+  const shown = draftShown
+    ? [...plan.marks.filter((m) => m.id !== draftShown.id), draftShown]
     : plan.marks;
   function visit(next: Page) {
     setPlacement(null);
@@ -529,6 +562,10 @@ export default function App({
         );
         return;
       }
+      if (tool === "polygon") {
+        polygonClick(p, e.detail);
+        return;
+      }
       const mark: Mark = {
         id: crypto.randomUUID(),
         type: tool,
@@ -537,6 +574,23 @@ export default function App({
         points: [p],
         text: "",
       };
+      if (tool === "marker") {
+        mark.symbol = symbol;
+        if (e.pointerType === "touch") {
+          gesture.current = {
+            kind: "tap",
+            action: "note",
+            point: p,
+            mark,
+            start: { x: e.clientX, y: e.clientY },
+            camera,
+          };
+          e.currentTarget.setPointerCapture(e.pointerId);
+          return;
+        }
+        placeMarker(mark);
+        return;
+      }
       if (tool === "note") {
         mark.text = notePreset;
         if (e.pointerType === "touch") {
@@ -561,6 +615,54 @@ export default function App({
     }
     e.currentTarget.setPointerCapture(e.pointerId);
   }
+  function polygonClick(p: Point, clicks: number) {
+    const current = draft?.type === "polygon" ? draft : null;
+    if (!current) {
+      setSelected(null);
+      setDraft({
+        id: crypto.randomUUID(),
+        type: "polygon",
+        color,
+        width,
+        points: [p],
+        text: "",
+      });
+      return;
+    }
+    const first = current.points[0];
+    const closing =
+      current.points.length >= 3 &&
+      Math.hypot(p.x - first.x, p.y - first.y) < overlayUnit * 14;
+    if (closing || clicks >= 2) {
+      finishPolygon(current);
+      return;
+    }
+    if (current.points.length >= 500) {
+      finishPolygon(current);
+      return;
+    }
+    setDraft({ ...current, points: [...current.points, p] });
+  }
+  function finishPolygon(current = draft) {
+    setDraft(null);
+    setPolyHover(null);
+    if (!current || current.type !== "polygon") return;
+    // A double-click leaves a duplicate last corner; drop near-duplicates.
+    const points = current.points.filter(
+      (p, i, all) =>
+        i === 0 || Math.hypot(p.x - all[i - 1].x, p.y - all[i - 1].y) > 1,
+    );
+    if (points.length < 3) return;
+    const mark = { ...current, points };
+    commit({ ...plan, marks: [...plan.marks, mark] });
+    setSelected(mark.id);
+  }
+  function placeMarker(mark: Mark) {
+    setPanel(true);
+    setSection("board");
+    commit({ ...plan, marks: [...plan.marks, mark] });
+    setSelected(mark.id);
+  }
   function placeNote(mark: Mark) {
     setPanel(true);
     setSection("board");
@@ -574,6 +676,8 @@ export default function App({
   }
   function move(e: PointerEvent<SVGSVGElement>) {
     setCursor(toGame(position(e.clientX, e.clientY), plan.map));
+    if (draft?.type === "polygon" && !gesture.current)
+      setPolyHover(position(e.clientX, e.clientY));
     if (touches.current.has(e.pointerId))
       touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const g = gesture.current;
@@ -657,8 +761,10 @@ export default function App({
       if (missionDraft) updateMission(missionDraft);
       setMissionDraft(null);
     } else if (g.kind === "tap") {
-      if (g.action === "note" && g.mark) placeNote(g.mark);
-      else if (g.action === "erase" && g.id) remove(g.id);
+      if (g.action === "note" && g.mark) {
+        if (g.mark.type === "marker") placeMarker(g.mark);
+        else placeNote(g.mark);
+      } else if (g.action === "erase" && g.id) remove(g.id);
       else if (g.action === "gun" || g.action === "target") {
         const coordinate = toGame(g.point, plan.map);
         if (
@@ -705,7 +811,25 @@ export default function App({
   function keys(e: KeyboardEvent) {
     if (help || library) return;
     if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+    if (draft?.type === "polygon") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finishPolygon();
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        if (draft.points.length > 1)
+          setDraft({ ...draft, points: draft.points.slice(0, -1) });
+        else {
+          setDraft(null);
+          setPolyHover(null);
+        }
+        return;
+      }
+    }
     if (e.key === "Escape") {
+      setPolyHover(null);
       setLandmark(null);
       setPlacement(null);
       gesture.current = null;
@@ -852,6 +976,49 @@ export default function App({
       setBusy(false);
     }
   }
+  async function copyShareLink() {
+    setMenu(false);
+    const shared = sharedFrom(plan);
+    if (!shared) {
+      setError(
+        "Share links work for the built-in maps. Export the editable plan to share an imported map.",
+      );
+      return;
+    }
+    try {
+      const url = shareLink(await encodeShare(shared));
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        window.prompt("Copy this share link", url);
+      }
+      setNotice(
+        url.length > 2000
+          ? `Share link copied (${url.length} characters). It is too long for one Discord message; remove long freehand drawings or send the plan file.`
+          : `Share link copied (${url.length} characters). It carries drawings, fire missions and briefing, not your map image.`,
+      );
+    } catch {
+      setError("Could not create a share link in this browser.");
+    }
+  }
+  // Paste a game coordinate copy (x12.34, y56.78) anywhere on the board: the
+  // first sets the gun, later pastes move only the target.
+  function pasteCoordinate(e: ClipboardEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+    const point = parseCoordinates(e.clipboardData.getData("text"));
+    if (!point || !mapData(plan.map)) return;
+    e.preventDefault();
+    const mission = plan.mission ?? emptyMission();
+    const field = mission.gun ? "target" : "gun";
+    updateMission({ ...mission, [field]: point });
+    setSection("fire");
+    setPanel(true);
+    setNotice(
+      field === "gun"
+        ? `Gun set to ${coordinateText(point)}. Paste the next copy to set the target.`
+        : `Target set to ${coordinateText(point)}. Clear the gun in Fire support to move it.`,
+    );
+  }
   async function exportPng(currentView = false) {
     setMenu(false);
     setBusy(true);
@@ -942,6 +1109,7 @@ export default function App({
         hidden={page === "home" || page === "flight" || page === "base"}
         className={`app ${panel ? "" : "panel-hidden"} section-${section}`}
         onKeyDown={keys}
+        onPaste={pasteCoordinate}
         onPointerDownCapture={(e) => {
           const target = e.target as Element;
           if (!target.closest(".export-wrap")) setMenu(false);
@@ -1139,6 +1307,22 @@ export default function App({
                   </button>
                   <button
                     type="button"
+                    title={
+                      obstacleMaps.includes(plan.map.name)
+                        ? "Relief: hillshade and 20 m contours"
+                        : "Relief is available on Bakurani and Ozeti"
+                    }
+                    aria-label="Relief shading and contours"
+                    disabled={
+                      showTerrain || !obstacleMaps.includes(plan.map.name)
+                    }
+                    aria-pressed={relief}
+                    onClick={() => updateView({ relief: !relief })}
+                  >
+                    <Mountain size={16} />
+                  </button>
+                  <button
+                    type="button"
                     title="Artillery range rings"
                     aria-label="Artillery range rings"
                     disabled={showTerrain || !mapData(plan.map)}
@@ -1289,6 +1473,18 @@ export default function App({
                         Squad briefing{" "}
                         <span>TXT · notes, targets & supplies</span>
                       </button>
+                      <button
+                        type="button"
+                        disabled={!sharedFrom(plan)}
+                        onClick={() => void copyShareLink()}
+                      >
+                        Copy share link{" "}
+                        <span>
+                          {sharedFrom(plan)
+                            ? "URL · drawings, markers & fire missions"
+                            : "Built-in maps only"}
+                        </span>
+                      </button>
                       <OfflineStatus onError={setError} />
                     </div>
                   )}
@@ -1407,7 +1603,17 @@ export default function App({
                       camera={camera}
                       viewport={viewport}
                     />
+                    {relief && obstacleMaps.includes(plan.map.name) && (
+                      <ReliefLayer map={plan.map} />
+                    )}
                     {treeOutlines && <BoardTrees plan={plan} />}
+                    <VisibilityOverlay
+                      analysis={analysis}
+                      marks={plan.marks}
+                      map={plan.map}
+                      unit={overlayUnit}
+                      layer="under"
+                    />
                     <g
                       data-annotations="true"
                       display={drawings ? undefined : "none"}
@@ -1459,6 +1665,15 @@ export default function App({
                       rings={rings}
                       unit={overlayUnit}
                     />
+                    {drawings && (
+                      <VisibilityOverlay
+                        analysis={analysis}
+                        marks={plan.marks}
+                        map={plan.map}
+                        unit={overlayUnit}
+                        layer="over"
+                      />
+                    )}
                     {drawings && active && (
                       <g data-selection="true" pointerEvents="none">
                         <Shape
@@ -1629,9 +1844,46 @@ export default function App({
                       </button>
                     ))}
                   </div>
+                  {((tool === "marker" && !active) ||
+                    active?.type === "marker") && (
+                    <MarkerPicker
+                      value={active?.symbol ?? symbol}
+                      onPick={(next) => {
+                        setSymbol(next);
+                        if (active?.type === "marker")
+                          editMark({ symbol: next });
+                        else {
+                          setTerrainView(false);
+                          setTool("marker");
+                        }
+                      }}
+                    />
+                  )}
+                  {active?.type === "polygon" && (
+                    <>
+                      <label htmlFor="marker-text">Zone label</label>
+                      <input
+                        id="marker-text"
+                        maxLength={40}
+                        value={active.text}
+                        onChange={(e) => editMark({ text: e.target.value })}
+                      />
+                    </>
+                  )}
+                  {active?.type === "marker" && (
+                    <>
+                      <label htmlFor="marker-text">Marker label</label>
+                      <input
+                        id="marker-text"
+                        maxLength={40}
+                        value={active.text}
+                        onChange={(e) => editMark({ text: e.target.value })}
+                      />
+                    </>
+                  )}
                   {!active && (
                     <>
-                      <label htmlFor="note-preset">Quick marker</label>
+                      <label htmlFor="note-preset">Quick note</label>
                       <select
                         id="note-preset"
                         value={notePreset}
@@ -1658,7 +1910,7 @@ export default function App({
                       </select>
                     </>
                   )}
-                  {active?.type !== "note" && (
+                  {active?.type !== "note" && active?.type !== "marker" && (
                     <>
                       <label className="weight-label" htmlFor="weight">
                         Stroke width<span>{active?.width ?? width} px</span>
@@ -1692,6 +1944,16 @@ export default function App({
                       </small>
                     </>
                   )}
+                  {(active?.type === "ruler" || active?.type === "circle") &&
+                    obstacleMaps.includes(plan.map.name) && (
+                      <VisibilityCheck
+                        key={active.id}
+                        plan={plan}
+                        mark={active}
+                        analysis={analysis}
+                        onResult={setAnalysis}
+                      />
+                    )}
                 </section>
                 <section className="annotations">
                   <div className="section-heading">
@@ -1757,7 +2019,9 @@ export default function App({
                               className="annotation-icon"
                               style={{ color: m.color }}
                             >
-                              {m.type === "note" ? (
+                              {m.type === "marker" && m.symbol ? (
+                                <MarkerIcon symbol={m.symbol} />
+                              ) : m.type === "note" ? (
                                 <StickyNote size={17} />
                               ) : m.type === "arrow" ? (
                                 <ArrowUpRight size={18} />
@@ -1766,9 +2030,15 @@ export default function App({
                               )}
                             </span>
                             <span>
-                              {m.type === "note"
-                                ? m.text || "Empty note"
-                                : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : "Line"} ${i + 1}`}
+                              {m.type === "marker"
+                                ? m.text
+                                  ? `${markerLabel(m.symbol)} · ${m.text}`
+                                  : markerLabel(m.symbol)
+                                : m.type === "polygon" && m.text
+                                  ? m.text
+                                  : m.type === "note"
+                                    ? m.text || "Empty note"
+                                    : `${m.type === "pen" ? "Drawing" : m.type === "arrow" ? "Arrow" : m.type === "ruler" ? "Measurement" : m.type === "circle" ? "Area" : m.type === "polygon" ? "Zone" : "Line"} ${i + 1}`}
                             </span>
                           </button>
                           <button
@@ -1798,7 +2068,7 @@ export default function App({
                     onChange={(e) => setBrightness(Number(e.target.value))}
                   />
                   <p>
-                    Bakurani & Ozeti terrain renders.
+                    Bakurani, Ozeti & Zestafona terrain renders.
                     <br />
                     Your drawings stay with each map.
                   </p>
@@ -1819,6 +2089,46 @@ export default function App({
             )}
           </aside>
         </div>
+        <ShareInbox
+          busy={busy}
+          onOpen={async (shared, mode) => {
+            try {
+              let base = plan;
+              if (plan.map.name !== shared.map) {
+                await flushSaves();
+                base = await openMap(
+                  builtIns.find((m) => m.name === shared.map)!.id,
+                );
+              }
+              commit(applyShared(base, shared, mode));
+              if (base !== plan) fit(base.map);
+              setSelected(null);
+              setPlacement(null);
+              visit("board");
+              setNotice(
+                `Opened shared plan “${shared.name}”. Undo reverses it.`,
+              );
+            } catch (e) {
+              setError(
+                e instanceof Error
+                  ? e.message
+                  : "Could not open the shared plan.",
+              );
+            }
+          }}
+        />
+        {notice && !error && (
+          <div className="error notice" role="status">
+            <span>{notice}</span>
+            <button
+              type="button"
+              aria-label="Dismiss message"
+              onClick={() => setNotice("")}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
         {error && (
           <div className="error" role="alert">
             <span>{error}</span>
@@ -1872,4 +2182,9 @@ export default function App({
       </div>
     </div>
   );
+}
+
+function MarkerIcon({ symbol }: { symbol: MarkerSymbol }) {
+  const Icon = markerIcons[symbol];
+  return <Icon size={17} />;
 }

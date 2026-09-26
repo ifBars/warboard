@@ -2,9 +2,20 @@ import sharp from "sharp";
 import { mkdir } from "node:fs/promises";
 const revision = "c3252c9d24a22d1aad5d3fa4408807aef591bb56";
 const base = `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${revision}`;
+// Zestafona tiles are not in the pinned git revision; Apollyon now serves them
+// from its public asset release (maps/zestafona.json at revision d96c15f).
+const tileBase = (name: string) =>
+  name === "zestafona"
+    ? "https://assets.wardogs-artillery.com/releases/assets-v1"
+    : base;
+const requested = process.argv.slice(2);
 await mkdir("public/maps", { recursive: true });
 await mkdir("work/tiles", { recursive: true });
-for (const name of ["bakurani", "ozeti"]) {
+for (const name of requested.length
+  ? requested
+  : ["bakurani", "ozeti", "zestafona"]) {
+  if (!["bakurani", "ozeti", "zestafona"].includes(name))
+    throw new Error(`Unknown map ${name}`);
   const composites: sharp.OverlayOptions[] = [];
   const jobs = Array.from({ length: 256 }, (_, n) => ({
     x: n % 16,
@@ -15,7 +26,7 @@ for (const name of ["bakurani", "ozeti"]) {
     Array.from({ length: 6 }, async () => {
       while (jobs.length) {
         const { x, y } = jobs.pop()!;
-        const url = `${base}/maps/tiles/${name}/zoom_4/${x}_${y}.webp`;
+        const url = `${tileBase(name)}/maps/tiles/${name}/zoom_4/${x}_${y}.webp`;
         const cache = Bun.file(`work/tiles/${name}-${x}-${y}.webp`);
         let input: Buffer;
         if (await cache.exists())

@@ -5,7 +5,10 @@ import {
   type TerrainManifest,
 } from "../src/terrain";
 import { createHash } from "node:crypto";
-for (const map of ["bakurani", "ozeti"]) {
+const requested = process.argv.slice(2);
+for (const map of requested.length
+  ? requested
+  : ["bakurani", "ozeti", "zestafona"]) {
   const root = `public/terrain/${map}`;
   const manifest: TerrainManifest = await Bun.file(
     `${root}/manifest.json`,
