@@ -37,3 +37,8 @@ Pasting a game coordinate copy (`x12.34, y56.78`) on the Board sets the gun firs
 - **Clutchbase HD surface.** Clutchbase publishes a 2 m composite surface, but it is keyed or obfuscated, so it was not decoded or used. Use it only with Clutchbase's permission.
 - **RAWDOGS Field Calculator (AGPL-3.0).** Its L81 and SPH-2 tables are an independent capture of the same sight data already bundled from Apollyon, at coarser steps. No code or data was imported.
 - **MarkusAureliusMaximus/wardogs-maps and djzet/wardogs-calc (MIT).** Reviewed for ideas: hillshade, contours and share links. Apollyon's terrain also covers Zestafona, but adding that map needs imagery rights confirmed first.
+
+## Relief layer and zones
+
+- **Relief** (Map controls → mountain icon) overlays a hillshade (sun from the north-west, 2× vertical exaggeration) and 20 m contours, with index lines every 100 m. Both are computed in the browser from the derived bare-ground grid. The idea comes from [wardogs-maps](https://github.com/MarkusAureliusMaximus/wardogs-maps) (MIT); no code was copied. Contours are unlabelled because the height datum is offset. The layer is not included in PNG exports.
+- **Zone** (G) draws a labelled polygon with its calibrated area. Click to add corners, then click the first corner, double-click or press Enter to finish.

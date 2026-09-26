@@ -41,6 +41,7 @@ import MarkerPicker from "../components/MarkerPicker";
 import { markerIcons } from "../components/markerIcons";
 import VisibilityCheck from "../components/VisibilityCheck";
 import VisibilityOverlay from "../components/VisibilityOverlay";
+import ReliefLayer from "../components/ReliefLayer";
 import ShareInbox from "../components/ShareInbox";
 import { applyShared, encodeShare, shareLink, sharedFrom } from "../share";
 import type { Analysis } from "../visibilityAnalysis";
@@ -93,6 +94,7 @@ import {
   SlidersHorizontal,
   MapPin,
   Pentagon,
+  Mountain,
 } from "lucide-react";
 import {
   colors,
@@ -192,6 +194,7 @@ export default function App({
     layers,
     grid,
     rings,
+    relief,
     terrainColor,
     terrainLighting,
     treeOutlines,
@@ -1305,6 +1308,16 @@ export default function App({
                   </button>
                   <button
                     type="button"
+                    title="Relief: hillshade and 20 m contours"
+                    aria-label="Relief shading and contours"
+                    disabled={showTerrain || !mapData(plan.map)}
+                    aria-pressed={relief}
+                    onClick={() => updateView({ relief: !relief })}
+                  >
+                    <Mountain size={16} />
+                  </button>
+                  <button
+                    type="button"
                     title="Artillery range rings"
                     aria-label="Artillery range rings"
                     disabled={showTerrain || !mapData(plan.map)}
@@ -1585,6 +1598,9 @@ export default function App({
                       camera={camera}
                       viewport={viewport}
                     />
+                    {relief && mapData(plan.map) && (
+                      <ReliefLayer map={plan.map} />
+                    )}
                     {treeOutlines && <BoardTrees plan={plan} />}
                     <VisibilityOverlay
                       analysis={analysis}
