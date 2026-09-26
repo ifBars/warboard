@@ -36,7 +36,7 @@ Pasting a game coordinate copy (`x12.34, y56.78`) on the Board sets the gun firs
 - **N4 Lab (wardogs.n4lab.dev).** Its terms prohibit AI and automated access and reproducing its functionality or look. Only its public feature summary informed the feature list; no assets, data, code or visual design were used.
 - **Clutchbase HD surface.** Clutchbase publishes a 2 m composite surface, but it is keyed or obfuscated, so it was not decoded or used. Use it only with Clutchbase's permission.
 - **RAWDOGS Field Calculator (AGPL-3.0).** Its L81 and SPH-2 tables are an independent capture of the same sight data already bundled from Apollyon, at coarser steps. No code or data was imported.
-- **MarkusAureliusMaximus/wardogs-maps and djzet/wardogs-calc (MIT).** Reviewed for ideas: hillshade, contours and share links. Apollyon's terrain also covers Zestafona, but adding that map needs imagery rights confirmed first.
+- **MarkusAureliusMaximus/wardogs-maps and djzet/wardogs-calc (MIT).** Reviewed for ideas: hillshade, contours and share links. Zestafona was added from Apollyon's data with the project owner's approval; see `DEPLOYMENT.md`.
 
 ## Relief layer and zones
 
