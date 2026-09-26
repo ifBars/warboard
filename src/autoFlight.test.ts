@@ -333,7 +333,7 @@ test("composite structures and placed canopy affect route costs and fitted clear
     canopy: new Float32Array(size * size).fill(NaN),
   };
   for (let y = 0; y < size; y++)
-    for (let x = 48; x < 53; x++) r.obstacles.canopy[y * size + x] = 165;
+    for (let x = 48; x < 53; x++) r.obstacles.canopy[y * size + x] = 135;
   const cost = corridorCost(r);
   expect(cost.density({ x: 10, y: 10 })).toBeGreaterThan(
     cost.density({ x: 5, y: 10 }),
@@ -359,7 +359,7 @@ test("composite structures and placed canopy affect route costs and fitted clear
   expect(
     profile
       .filter((p) => p.x >= 9.6 && p.x < 10.6)
-      .every((p) => p.altitude >= 177 - 0.001),
+      .every((p) => p.altitude >= 147 - 0.001),
   ).toBe(true);
   expect(fitted.waypoints.at(-1)?.altitude).toBeCloseTo(112);
 });

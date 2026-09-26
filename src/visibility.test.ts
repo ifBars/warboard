@@ -139,4 +139,7 @@ test("grid sampler decodes surface and canopy north-up", () => {
   expect(sample({ x: 1.5, y: 1.5 })).toEqual({ surface: 11, canopy: 30 });
   expect(sample({ x: 0.5, y: 0.5 })).toEqual({ surface: 12, canopy: null });
   expect(sample({ x: 2, y: 0 })).toBeNull();
+  // Canopy envelopes far above the surface are artefacts and are ignored.
+  grid.canopy[1] = 500;
+  expect(sample({ x: 1.5, y: 1.5 })).toEqual({ surface: 11, canopy: null });
 });

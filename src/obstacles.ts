@@ -13,6 +13,11 @@ export type ObstacleGrid = {
   roadSpan?: number;
 };
 const cache = new Map<string, Promise<ObstacleGrid>>();
+/**
+ * Canopy envelopes more than this far above the surface are data artefacts:
+ * 99% of cells are under 42 m, while a few thousand per map claim up to 1 km.
+ */
+export const MAX_CANOPY_HEIGHT = 45;
 export function obstacleHeight(
   grid: ObstacleGrid | undefined,
   p: Point,
@@ -31,8 +36,13 @@ export function obstacleHeight(
         row = y + dy;
       if (col < 0 || row < 0 || col >= size || row >= size) continue;
       const i = row * size + col;
-      top = Math.max(top, grid.surface[i] * grid.scale + grid.offset);
-      if (Number.isFinite(grid.canopy[i])) top = Math.max(top, grid.canopy[i]);
+      const surface = grid.surface[i] * grid.scale + grid.offset;
+      top = Math.max(top, surface);
+      if (
+        Number.isFinite(grid.canopy[i]) &&
+        grid.canopy[i] - surface <= MAX_CANOPY_HEIGHT
+      )
+        top = Math.max(top, grid.canopy[i]);
     }
   return Number.isFinite(top) ? top : null;
 }

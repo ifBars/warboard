@@ -1,4 +1,4 @@
-import type { ObstacleGrid } from "./obstacles";
+import { MAX_CANOPY_HEIGHT, type ObstacleGrid } from "./obstacles";
 import type { Point } from "./model";
 
 // Game coordinates are hundreds of metres, north-up. Samplers return absolute
@@ -15,10 +15,14 @@ export function gridSampler(grid: ObstacleGrid): Sampler {
         Math.floor((1 - p.y / grid.span) * grid.size),
       );
     const i = row * grid.size + col,
-      canopy = grid.canopy[i];
+      canopy = grid.canopy[i],
+      surface = grid.surface[i] * grid.scale + grid.offset;
     return {
-      surface: grid.surface[i] * grid.scale + grid.offset,
-      canopy: Number.isFinite(canopy) ? canopy : null,
+      surface,
+      canopy:
+        Number.isFinite(canopy) && canopy - surface <= MAX_CANOPY_HEIGHT
+          ? canopy
+          : null,
     };
   };
 }

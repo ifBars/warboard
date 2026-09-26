@@ -1,4 +1,4 @@
-import type { ObstacleGrid } from "./obstacles";
+import { MAX_CANOPY_HEIGHT, type ObstacleGrid } from "./obstacles";
 
 // Separable running min/max over a square window. Opening (erode, then dilate)
 // removes raised features narrower than the window while reproducing planar
@@ -166,7 +166,11 @@ export function extractFeatures(
     for (let col = 0; col < size; col++) {
       const i = row * size + col,
         canopy = grid.canopy[i];
-      if (Number.isFinite(canopy) && canopy - surface[i] >= minTree)
+      if (
+        Number.isFinite(canopy) &&
+        canopy - surface[i] >= minTree &&
+        canopy - surface[i] <= MAX_CANOPY_HEIGHT
+      )
         trees.push((col + 0.5) * cell, y, surface[i], canopy - surface[i]);
     }
   }
