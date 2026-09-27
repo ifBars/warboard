@@ -1,59 +1,16 @@
 import sharp from "sharp";
-import { mkdir } from "node:fs/promises";
-const revision = "c3252c9d24a22d1aad5d3fa4408807aef591bb56";
-const base = `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${revision}`;
-// Zestafona tiles are not in the pinned git revision; Apollyon now serves them
-// from its public asset release (maps/zestafona.json at revision d96c15f).
-const tileBase = (name: string) =>
-  name === "zestafona"
-    ? "https://assets.wardogs-artillery.com/releases/assets-v1"
-    : base;
-const requested = process.argv.slice(2);
-await mkdir("public/maps", { recursive: true });
-await mkdir("work/tiles", { recursive: true });
-for (const name of requested.length
-  ? requested
-  : ["bakurani", "ozeti", "zestafona"]) {
-  if (!["bakurani", "ozeti", "zestafona"].includes(name))
-    throw new Error(`Unknown map ${name}`);
-  const composites: sharp.OverlayOptions[] = [];
-  const jobs = Array.from({ length: 256 }, (_, n) => ({
-    x: n % 16,
-    y: Math.floor(n / 16),
-  }));
-  let count = 0;
-  await Promise.all(
-    Array.from({ length: 6 }, async () => {
-      while (jobs.length) {
-        const { x, y } = jobs.pop()!;
-        const url = `${tileBase(name)}/maps/tiles/${name}/zoom_4/${x}_${y}.webp`;
-        const cache = Bun.file(`work/tiles/${name}-${x}-${y}.webp`);
-        let input: Buffer;
-        if (await cache.exists())
-          input = Buffer.from(await cache.arrayBuffer());
-        else {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`${response.status}: ${url}`);
-          input = Buffer.from(await response.arrayBuffer());
-          await Bun.write(cache, input);
-        }
-        const meta = await sharp(input).metadata();
-        if (meta.width !== 256 || meta.height !== 256)
-          throw new Error(`Unexpected tile size: ${url}`);
-        composites.push({ input, left: x * 256, top: y * 256 });
-        if (++count % 64 === 0) console.log(`${name}: ${count}/256 tiles`);
-      }
-    }),
-  );
-  await sharp({
-    create: { width: 4096, height: 4096, channels: 3, background: "#333" },
-  })
-    .composite(composites)
-    .webp({ quality: 92 })
-    .toFile(`public/maps/${name}.webp`);
-  console.log(`${name}: assembled 4096 × 4096 terrain raster`);
+
+// Map overviews live in this project's public asset bundle. Validate those
+// local copies without fetching tiles from an upstream host.
+for (const map of ["bakurani", "ozeti", "zestafona"]) {
+  const path = `public/maps/${map}.webp`;
+  const file = Bun.file(path);
+  if (!(await file.exists())) throw new Error(`Missing local map overview: ${path}`);
+
+  const metadata = await sharp(Buffer.from(await file.arrayBuffer())).metadata();
+  if (metadata.width !== 4096 || metadata.height !== 4096)
+    throw new Error(`Unexpected map overview dimensions: ${path}`);
+  console.log(`${map}: verified local 4096 x 4096 overview`);
 }
-await Bun.write(
-  "public/maps/APOLLYON-LICENSE.txt",
-  await (await fetch(`${base}/LICENSE`)).text(),
-);
+
+console.log("Local map overviews verified; no network requests were made.");

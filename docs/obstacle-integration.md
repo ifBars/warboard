@@ -12,7 +12,7 @@ WARBOARD keeps running entirely in the browser. These additions use public commu
 
 Other reviewed sources (wardogsFOBDesignOffice, omarchy-wardogs, ArsenalAirlines and artillery calculators) did not supply a better verified metric obstacle dataset. Their assumptions or aircraft performance claims are not imported as measurements.
 
-These data attributions do not relicense game artwork. The project owner's permission to publish bundled game/community data was confirmed before deployment. No watermark was removed, inpainted, or used as visible map imagery by this change.
+These data attributions do not establish ownership of or permission to redistribute the underlying game artwork. A previous statement that permission to publish bundled game/community data had been confirmed was incorrect and is retracted. Apollyon says he did not grant that permission; this does not establish that he owns the underlying game artwork. No watermark was removed, inpainted, or used as visible map imagery by this change.
 
 ## Geometry and limitations
 

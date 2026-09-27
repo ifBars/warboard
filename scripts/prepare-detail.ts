@@ -1,43 +1,21 @@
-import { mkdir } from "node:fs/promises";
 import sharp from "sharp";
-const revision = "c3252c9d24a22d1aad5d3fa4408807aef591bb56";
-const base = `https://raw.githubusercontent.com/apollyon-sys/wardogs-calculator/${revision}/maps/tiles`;
-// Zestafona tiles come from Apollyon's public asset release (not in git).
-const tileBase = (map: string) =>
-  map === "zestafona"
-    ? "https://assets.wardogs-artillery.com/releases/assets-v1/maps/tiles"
-    : base;
-const requested = process.argv.slice(2);
-for (const map of requested.length
-  ? requested
-  : ["bakurani", "ozeti", "zestafona"]) {
-  const root = `public/maps/detail/${map}`;
-  await mkdir(root, { recursive: true });
-  const jobs = Array.from({ length: 1024 }, (_, n) => ({
-    x: n % 32,
-    y: Math.floor(n / 32),
-  }));
+
+// Detail tiles are served from this project's own public asset bundle. Keep
+// this preparation check offline so builds never bulk-fetch upstream assets.
+for (const map of ["bakurani", "ozeti", "zestafona"]) {
   let count = 0;
-  await Promise.all(
-    Array.from({ length: 6 }, async () => {
-      while (jobs.length) {
-        const { x, y } = jobs.pop()!;
-        const file = Bun.file(`${root}/${x}_${y}.webp`);
-        if (!(await file.exists())) {
-          const response = await fetch(
-            `${tileBase(map)}/${map}/zoom_5/${x}_${y}.webp`,
-          );
-          if (!response.ok)
-            throw new Error(`Detail tile HTTP ${response.status}`);
-          const bytes = await response.arrayBuffer();
-          const meta = await sharp(bytes).metadata();
-          if (meta.width !== 256 || meta.height !== 256)
-            throw new Error("Invalid tile size");
-          await Bun.write(file, bytes);
-        }
-        if (++count % 256 === 0)
-          console.log(`${map}: ${count}/1024 detail tiles`);
-      }
-    }),
-  );
+  for (let y = 0; y < 32; y += 1) {
+    for (let x = 0; x < 32; x += 1) {
+      const path = `public/maps/detail/${map}/${x}_${y}.webp`;
+      const file = Bun.file(path);
+      if (!(await file.exists())) throw new Error(`Missing local tile: ${path}`);
+      const metadata = await sharp(Buffer.from(await file.arrayBuffer())).metadata();
+      if (metadata.width !== 256 || metadata.height !== 256)
+        throw new Error(`Unexpected tile dimensions: ${path}`);
+      count += 1;
+    }
+  }
+  console.log(`${map}: verified ${count} local detail tiles`);
 }
+
+console.log("Local detail tiles verified; no network requests were made.");
