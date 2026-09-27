@@ -1,4 +1,5 @@
 import { assetUrl } from "./assetUrl";
+import { terrainDetailLevel } from "./terrainDetailLevels";
 import * as T from "three";
 
 // A bounded high-resolution texture window over the overview, using the same
@@ -60,14 +61,16 @@ diffuseColor *= sampledDiffuseColor;`,
   }
   return {
     update(image: string, pixelsAcrossMap: number, u: number, v: number) {
-      const match = /^\/maps\/community-color\/(bakurani|ozeti)\.webp$/.exec(
-        "/" + image.slice(assetUrl("/").length),
-      );
+      const map =
+        /^\/maps\/community-color\/(bakurani|ozeti|zestafona)\.webp$/.exec(
+          "/" + image.slice(assetUrl("/").length),
+        )?.[1];
       if (image !== source) {
         source = image;
         uniforms.terrainDetailEnabled.value = 0;
       }
-      if (!match || !context || pixelsAcrossMap <= 4096) {
+      const level = map ? terrainDetailLevel(map, pixelsAcrossMap) : null;
+      if (!map || !context || pixelsAcrossMap <= 4096 || level === null) {
         if (key) {
           key = "";
           stop();
@@ -76,11 +79,6 @@ diffuseColor *= sampledDiffuseColor;`,
         }
         return;
       }
-      const map = match[1];
-      const level = Math.min(
-        map === "ozeti" ? 6 : 5,
-        Math.max(4, Math.ceil(Math.log2(pixelsAcrossMap / 512))),
-      );
       const count = 2 ** level;
       const x0 = Math.max(
         0,
@@ -109,7 +107,9 @@ diffuseColor *= sampledDiffuseColor;`,
                 const index = cursor++,
                   x = index % side,
                   y = Math.floor(index / side);
-                const url = assetUrl(`/maps/community-color/${map}_files/${level}/${x0 + x}_${y0 + y}.webp`);
+                const url = assetUrl(
+                  `/maps/community-color/${map}_files/${level}/${x0 + x}_${y0 + y}.webp`,
+                );
                 let bitmap = cache.get(url);
                 if (!bitmap) {
                   try {
