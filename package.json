@@ -12,6 +12,7 @@
     "typecheck": "tsc -b",
     "format": "prettier --write src scripts *.json *.ts *.mjs *.md",
     "maps:prepare": "bun scripts/prepare-maps.ts",
+    "maps:zestafona-color": "bun scripts/prepare-zestafona-color.ts",
     "maps:detail": "bun scripts/prepare-detail.ts",
     "terrain:prepare": "bun scripts/prepare-terrain.ts"
   },

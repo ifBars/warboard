@@ -15,6 +15,7 @@ const core = [
   "/maps/zestafona.webp",
   "/maps/community-color/bakurani.webp",
   "/maps/community-color/ozeti.webp",
+  "/maps/community-color/zestafona.webp",
   "/maps/color/bakurani.webp",
   "/maps/color/ozeti.webp",
   "/terrain/bakurani/preview.json",

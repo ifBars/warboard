@@ -1,0 +1,18 @@
+{
+  "filename": "zesty_map.png",
+  "sourceWidth": 32768,
+  "sourceHeight": 32768,
+  "sourceSha256": "9f72d34f3871d15f3d64a417a0a8a5f1494ecf79fce38182acabf1e93c0e93cf",
+  "redditPost": "https://www.reddit.com/r/WarDogs/comments/1w41e33/hires_images_of_all_3_current_maps_perfect_for/",
+  "driveFolder": "https://drive.google.com/drive/folders/1pL3f1YWoSGDMpMBCqWmywanbetiPBTGZ",
+  "overviewWidth": 4096,
+  "overviewWebpQuality": 78,
+  "detailWidth": 8192,
+  "detailTileSize": 512,
+  "detailLevels": [
+    12,
+    13
+  ],
+  "detailWebpQuality": 60,
+  "status": "User attributes source to the listed community post; the post does not state an asset license"
+}

@@ -51,8 +51,9 @@ export default function TerrainColorChoice({
         </label>
       )}
       <small>
-        Community imagery · 16K Bakurani / 32K Ozeti. Test layer shared by
-        u/blahajSupremacy.
+        Community imagery · 16K Bakurani / 32K Ozeti, shared by
+        u/blahajSupremacy. Zestafona is user-supplied; its source and
+        redistribution rights are unverified.
       </small>
     </div>
   );

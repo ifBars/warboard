@@ -12,6 +12,9 @@ test("sourced imagery preserves the plan map and never selects detection-only as
   expect(mapImage({ ...map, name: "Ozeti" }, true)).toBe(
     "/maps/community-color/ozeti.webp",
   );
+  expect(mapImage({ ...map, name: "Zestafona" }, true)).toBe(
+    "/maps/community-color/zestafona.webp",
+  );
   expect(mapImage({ ...map, name: "Custom" }, true)).toBe(map.image);
   expect(mapImage({ ...map, width: 2048 }, true)).toBe(map.image);
   expect(detailImagery(map, true)).toEqual({
@@ -24,5 +27,13 @@ test("sourced imagery preserves the plan map and never selects detection-only as
   expect(detailImagery({ ...map, name: "Ozeti" }, true, 100)).toEqual({
     count: 64,
     path: "/maps/community-color/ozeti_files/6",
+  });
+  expect(detailImagery({ ...map, name: "Zestafona" }, true, 2)).toEqual({
+    count: 16,
+    path: "/maps/community-color/zestafona_files/4",
+  });
+  expect(detailImagery({ ...map, name: "Zestafona" }, true, 100)).toEqual({
+    count: 16,
+    path: "/maps/community-color/zestafona_files/4",
   });
 });
